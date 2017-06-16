@@ -6,10 +6,9 @@ zerombr
 clearpart --all
 bootloader --append="no_timer_check console=tty0 console=ttyS0,115200 ipv6.disable=0 selinux=1 quiet systemd.show_status=yes"
 part /boot --size=512  --fstype=xfs
-part  swap --size=2048 --fstype=swap
-part pv.01 --size=1024 --grow --maxsize=8193
+part pv.01 --size=1024 --grow --maxsize=10241
 volgroup vg00 pv.01
-logvol / --vgname=vg00 --size=8192 --fstype=xfs --name=lv_root
+logvol / --vgname=vg00 --size=10240 --fstype=xfs --name=lv_root
 selinux --enforcing
 auth --useshadow --passalgo=sha512
 rootpw p
