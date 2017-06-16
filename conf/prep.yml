@@ -6,7 +6,7 @@
     disconnected: true
     ntp_server: 0.rhel.pool.ntp.org
     use_subs_mgr: false
-    ose_ver: 3.4
+    ose_ver: 3.5
   tasks:
     - name: Detect Atomic Host
       set_fact:

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-OSE_VERS=3.4
+OSE_VERS=3.5
 REG_VERS=2
 UPSTREAM=registry.access.redhat.com
 REGISTRY=registry.example.com:5000

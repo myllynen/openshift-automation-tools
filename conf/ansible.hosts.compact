@@ -16,9 +16,9 @@ ansible_ssh_user=root
 # https://github.com/openshift/openshift-ansible/blob/master/DEPLOYMENT_TYPES.md
 deployment_type=openshift-enterprise
 containerized=true
-openshift_release=v3.4
-openshift_image_tag=v3.4.1.33
-openshift_pkg_version=-3.4.1.33
+openshift_release=v3.5
+openshift_image_tag=v3.5.5.24
+openshift_pkg_version=-3.5.5.24
 
 # Configure usage of openshift_clock role.
 openshift_clock_enabled=true
@@ -116,8 +116,15 @@ openshift_hosted_registry_storage_volume_size=10Gi
 # Metrics deployment
 openshift_hosted_metrics_deploy=true
 openshift_hosted_metrics_public_url=https://metrics.apps.test.example.com/hawkular/metrics
-openshift_hosted_metrics_deployer_prefix=registry.example.com:5000/openshift3/
-openshift_hosted_metrics_deployer_version=3.4.1
+openshift_metrics_install_metrics=true
+openshift_metrics_hawkular_hostname=metrics.apps.test.example.com
+openshift_metrics_image_prefix=registry.example.com:5000/openshift3/
+openshift_metrics_image_version=v3.5
+#openshift_metrics_cassandra_storage_type=pv
+
+openshift_metrics_cassandra_nodeselector={"region":"infra"}
+openshift_metrics_hawkular_nodeselector={"region":"infra"}
+openshift_metrics_heapster_nodeselector={"region":"infra"}
 
 # Metrics Storage Options
 openshift_hosted_metrics_storage_kind=nfs
@@ -130,16 +137,15 @@ openshift_hosted_metrics_storage_volume_size=10Gi
 
 # Logging deployment
 openshift_hosted_logging_deploy=true
-openshift_hosted_logging_master_public_url=https://logging.apps.test.example.com
-openshift_hosted_logging_hostname=logging.apps.test.example.com
-openshift_hosted_logging_ops_hostname=logging-ops.apps.test.example.com
-openshift_hosted_logging_deployer_prefix=registry.example.com:5000/openshift3/
-openshift_hosted_logging_deployer_version=3.4.1
+openshift_logging_install_logging=true
+openshift_logging_kibana_hostname=logging.apps.test.example.com
+openshift_logging_image_prefix=registry.example.com:5000/openshift3/
+openshift_logging_image_version=v3.5
 
-openshift_hosted_logging_curator_nodeselector='region=infra'
-openshift_hosted_logging_elasticsearch_nodeselector='region=infra'
-openshift_hosted_logging_fluentd_nodeselector='fluentd=true'
-openshift_hosted_logging_kibana_nodeselector='region=infra'
+openshift_logging_curator_nodeselector={"region":"infra"}
+openshift_logging_es_nodeselector={"region":"infra"}
+openshift_logging_fluentd_nodeselector={"fluentd":"true"}
+openshift_logging_kibana_nodeselector={"region":"infra"}
 
 # Logging storage config
 openshift_hosted_logging_storage_kind=nfs

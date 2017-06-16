@@ -33,17 +33,17 @@ containerized=true
 # use this to lookup the latest exact version of the container images, which is the tag actually used to configure
 # the cluster. For RPM installations we just verify the version detected in your configured repos matches this
 # release.
-openshift_release=v3.4
+openshift_release=v3.5
 
 # Specify an exact container image tag to install or configure.
 # WARNING: This value will be used for all hosts in containerized environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-openshift_image_tag=v3.4.1.33
+openshift_image_tag=v3.5.5.24
 
 # Specify an exact rpm version to install or configure.
 # WARNING: This value will be used for all hosts in RPM based environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-openshift_pkg_version=-3.4.1.33
+openshift_pkg_version=-3.5.5.24
 
 # Install the openshift examples
 openshift_install_examples=false
@@ -93,6 +93,12 @@ openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
 # Skip upgrading Docker during an OpenShift upgrade, leaves the current Docker version alone.
 # docker_upgrade=False
 
+# Specify exact version of etcd to configure or upgrade to.
+# etcd_version="3.1.0"
+# Enable etcd debug logging, defaults to false
+# etcd_debug=true
+# Set etcd log levels by package
+# etcd_log_package_levels="etcdserver=WARNING,security=DEBUG"
 
 # Upgrade Hooks
 #
@@ -110,7 +116,6 @@ openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
 #
 # Tasks to run after each master is upgraded and system/services have been restarted.
 # openshift_master_upgrade_post_hook=/usr/share/custom/post_master.yml
-
 
 # Alternate image format string, useful if you've got your own registry mirror
 oreg_url=registry.example.com:5000/openshift3/ose-${component}:${version}
@@ -306,8 +311,52 @@ openshift_hosted_router_selector='region=infra'
 # router's default certificate.
 #openshift_hosted_router_certificate={"certfile": "/path/to/router.crt", "keyfile": "/path/to/router.key", "cafile": "/path/to/router-ca.crt"}
 #
-# Disable management of the OpenShift Router
-#openshift_hosted_manage_router=false
+# Manage the OpenShift Router (optional)
+#openshift_hosted_manage_router=true
+#
+# Router sharding support has been added and can be achieved by supplying the correct
+# data to the inventory.  The variable to house the data is openshift_hosted_routers
+# and is in the form of a list.  If no data is passed then a default router will be
+# created.  There are multiple combinations of router sharding.  The one described
+# below supports routers on separate nodes.
+#openshift_hosted_routers:
+#- name: router1
+#  stats_port: 1936
+#  ports:
+#  - 80:80
+#  - 443:443
+#  replicas: 1
+#  namespace: default
+#  serviceaccount: router
+#  selector: type=router1
+#  images: "openshift3/ose-${component}:${version}"
+#  edits: []
+#  certificate:
+#    certfile: /path/to/certificate/abc.crt
+#    keyfile: /path/to/certificate/abc.key
+#    cafile: /path/to/certificate/ca.crt
+#- name: router2
+#  stats_port: 1936
+#  ports:
+#  - 80:80
+#  - 443:443
+#  replicas: 1
+#  namespace: default
+#  serviceaccount: router
+#  selector: type=router2
+#  images: "openshift3/ose-${component}:${version}"
+#  certificate:
+#    certfile: /path/to/certificate/xyz.crt
+#    keyfile: /path/to/certificate/xyz.key
+#    cafile: /path/to/certificate/ca.crt
+#  edits:
+#  # ROUTE_LABELS sets the router to listen for routes
+#  # tagged with the provided values
+#  - key: spec.template.spec.containers[0].env
+#    value:
+#      name: ROUTE_LABELS
+#      value: "route=external"
+#    action: append
 
 # OpenShift Registry Console Options
 # Override the console image prefix for enterprise deployments, not used in origin
@@ -337,8 +386,8 @@ openshift_hosted_registry_selector='region=infra'
 # based on the number of nodes matching the openshift registry selector.
 openshift_hosted_registry_replicas=1
 #
-# Disable management of the OpenShift Registry
-#openshift_hosted_manage_registry=false
+# Manage the OpenShift Registry (optional)
+#openshift_hosted_manage_registry=true
 
 # Registry Storage Options
 #
@@ -416,8 +465,22 @@ openshift_hosted_registry_storage_volume_size=10Gi
 # By default metrics are not automatically deployed, set this to enable them
 openshift_hosted_metrics_deploy=true
 openshift_hosted_metrics_public_url=https://metrics.apps.test.example.com/hawkular/metrics
-openshift_hosted_metrics_deployer_prefix=registry.example.com:5000/openshift3/
-openshift_hosted_metrics_deployer_version=3.4.1
+openshift_metrics_install_metrics=true
+openshift_metrics_hawkular_hostname=metrics.apps.test.example.com
+openshift_metrics_image_prefix=registry.example.com:5000/openshift3/
+openshift_metrics_image_version=v3.5
+#openshift_metrics_cassandra_storage_type=pv
+
+# Metrics selectors (optional)
+openshift_metrics_cassandra_nodeselector={"region":"infra"}
+openshift_metrics_hawkular_nodeselector={"region":"infra"}
+openshift_metrics_heapster_nodeselector={"region":"infra"}
+
+# Metrics limits (optional)
+# /usr/share/ansible/openshift-ansible/roles/openshift_metrics/README.md
+openshift_metrics_cassandra_limits_memory=1Gi
+#openshift_metrics_hawkular_limits_memory=4Gi
+openshift_metrics_heapster_limits_memory=1Gi
 
 #
 # Storage Options
@@ -454,22 +517,34 @@ openshift_hosted_metrics_storage_volume_size=10Gi
 # your cloud platform use this.
 #openshift_hosted_metrics_storage_kind=dynamic
 
-# Logging deployment
+# Logging deployment - see below for Ops Logging deployment
 #
 # Currently logging deployment is disabled by default, enable it by setting this
 openshift_hosted_logging_deploy=true
-openshift_hosted_logging_master_public_url=https://logging.apps.test.example.com
-openshift_hosted_logging_hostname=logging.apps.test.example.com
-openshift_hosted_logging_ops_hostname=logging-ops.apps.test.example.com
-openshift_hosted_logging_deployer_prefix=registry.example.com:5000/openshift3/
-openshift_hosted_logging_deployer_version=3.4.1
+openshift_logging_install_logging=true
+openshift_logging_kibana_hostname=logging.apps.test.example.com
+openshift_logging_image_prefix=registry.example.com:5000/openshift3/
+openshift_logging_image_version=v3.5
 
 # Logging selectors (optional)
-# Default values: unset
-openshift_hosted_logging_curator_nodeselector='region=infra'
-openshift_hosted_logging_elasticsearch_nodeselector='region=infra'
-openshift_hosted_logging_fluentd_nodeselector='fluentd=true'
-openshift_hosted_logging_kibana_nodeselector='region=infra'
+openshift_logging_curator_nodeselector={"region":"infra"}
+openshift_logging_es_nodeselector={"region":"infra"}
+openshift_logging_fluentd_nodeselector={"fluentd":"true"}
+openshift_logging_kibana_nodeselector={"region":"infra"}
+
+# Logging limits (optional)
+# /usr/share/ansible/openshift-ansible/roles/openshift_logging/README.md
+openshift_logging_curator_memory_limit=1Gi
+openshift_logging_es_memory_limit=2Gi
+openshift_logging_fluentd_memory_limit=512Mi
+openshift_logging_kibana_memory_limit=1Gi
+openshift_logging_kibana_proxy_memory_limit=1Gi
+
+# Configure the number of elastic search nodes, unless you're using dynamic provisioning
+# this value must be 1
+#openshift_logging_es_cluster_size=1
+#openshift_logging_es_pvc_size=
+#openshift_logging_es_pvc_prefix=
 
 #
 # Logging storage config
@@ -513,12 +588,19 @@ openshift_hosted_logging_storage_volume_size=10Gi
 #openshift_hosted_logging_elasticsearch_pvc_size=
 #openshift_hosted_logging_elasticsearch_pvc_prefix=
 
-# Logging ops configuration (optional)
-# Default values: unset
-openshift_hosted_logging_enable_ops_cluster=true
-openshift_hosted_logging_curator_ops_nodeselector='region=infra'
-openshift_hosted_logging_elasticsearch_ops_nodeselector='region=infra'
-openshift_hosted_logging_kibana_ops_nodeselector='region=infra'
+# Logging ops configuration (optional) - see above for Logging
+openshift_logging_use_ops=true
+openshift_logging_kibana_ops_hostname=logging-ops.apps.test.example.com
+openshift_logging_curator_ops_nodeselector={"region":"infra"}
+openshift_logging_es_ops_nodeselector={"region":"infra"}
+openshift_logging_kibana_ops_nodeselector={"region":"infra"}
+openshift_logging_curator_ops_memory_limit=1Gi
+openshift_logging_es_ops_memory_limit=2Gi
+openshift_logging_kibana_ops_memory_limit=1Gi
+openshift_logging_kibana_ops_proxy_memory_limit=1Gi
+#openshift_logging_es_ops_cluster_size=1
+#openshift_logging_es_ops_pvc_size=
+#openshift_logging_es_ops_pvc_prefix=
 openshift_hosted_loggingops_storage_kind=nfs
 openshift_hosted_loggingops_storage_access_modes=['ReadWriteOnce']
 #openshift_hosted_loggingops_storage_host=nfs01.example.com
@@ -526,10 +608,6 @@ openshift_hosted_loggingops_storage_nfs_directory=/var/srv/nfs
 openshift_hosted_loggingops_storage_nfs_options='*(rw,root_squash)'
 openshift_hosted_loggingops_storage_volume_name=logging-ops
 openshift_hosted_loggingops_storage_volume_size=10Gi
-#openshift_hosted_logging_elasticsearch_ops_cluster_size=1
-#openshift_hosted_logging_elasticsearch_ops_instance_ram=2G
-#openshift_hosted_logging_elasticsearch_ops_pvc_size=
-#openshift_hosted_logging_elasticsearch_ops_pvc_prefix=
 
 # Configure the multi-tenant SDN plugin (default is 'redhat/openshift-ovs-subnet')
 os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
@@ -736,6 +814,11 @@ openshift_master_audit_config={"enabled": true}
 
 # Set upgrade restart mode for full system restarts
 openshift_rolling_restart_mode=system
+
+# Validity of the auto-generated external etcd certificates in days.
+# Controls validity for etcd CA, peer, server and client certificates.
+#
+#etcd_ca_default_days=1825
 
 [nfs]
 nfs01.example.com containerized=false
