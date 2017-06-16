@@ -1,0 +1,17 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+# https://docs.openshift.com/container-platform/latest/install_config/install/prerequisites.html
+for node in $NODES; do
+  virt-install --connect qemu:///system --name $node --virt-type kvm \
+    --arch x86_64 --vcpus 4 --cpu host --ram 8192 --os-type linux \
+    --os-variant rhel7.3 \
+    --disk pool=images,format=qcow2,cache=none,io=native,size=12 \
+    --disk pool=images,format=qcow2,cache=none,io=native,size=24 \
+    --network network=default --graphics vnc --noreboot \
+    --location http://192.168.122.1/mnt/ \
+    --extra-args "ip=dhcp inst.ks=http://192.168.122.1/ks/rhel-7-ocp.ks console=tty0 console=ttyS0,115200 quiet systemd.show_status=yes" \
+    --noautoconsole
+    echo Use \"virsh console $node --devname serial0\" to monitor installation
+done

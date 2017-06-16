@@ -1,0 +1,12 @@
+---
+- name: Wipe out OpenShift data on NFS
+  hosts: nfs
+  become: true
+  tasks:
+    - name: Wipe out NFS storage contents
+      file: path={{ item }} state=absent
+      with_items:
+        - "{{ openshift_hosted_logging_storage_nfs_directory }}/{{ openshift_hosted_logging_storage_volume_name  }}"
+        - "{{ openshift_hosted_loggingops_storage_nfs_directory }}/{{ openshift_hosted_loggingops_storage_volume_name  }}"
+        - "{{ openshift_hosted_metrics_storage_nfs_directory }}/{{ openshift_hosted_metrics_storage_volume_name  }}"
+        - "{{ openshift_hosted_registry_storage_nfs_directory }}/{{ openshift_hosted_registry_storage_volume_name }}"

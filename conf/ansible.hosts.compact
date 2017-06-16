@@ -1,0 +1,189 @@
+# Create an OSEv3 group that contains the masters and nodes groups
+# For highly available load balancer a custom setup is needed, see
+# for example https://github.com/myllynen/openshift-ha-load-balancer
+[OSEv3:children]
+masters
+nodes
+etcd
+#lb
+nfs
+
+# Set variables common for all OSEv3 hosts
+[OSEv3:vars]
+ansible_ssh_user=root
+#ansible_become=yes
+
+# https://github.com/openshift/openshift-ansible/blob/master/DEPLOYMENT_TYPES.md
+deployment_type=openshift-enterprise
+containerized=true
+openshift_release=v3.4
+openshift_image_tag=v3.4.1.33
+openshift_pkg_version=-3.4.1.33
+
+# Configure usage of openshift_clock role.
+openshift_clock_enabled=true
+
+# Set upgrade restart mode for full system restarts
+openshift_rolling_restart_mode=system
+
+# Enable cockpit
+osm_use_cockpit=true
+osm_cockpit_plugins=['cockpit-kubernetes', 'cockpit-pcp', 'setroubleshoot-server']
+
+# Docker / Registry Configuration
+openshift_docker_additional_registries=registry.example.com:5000
+openshift_docker_blocked_registries=all
+openshift_docker_disable_push_dockerhub=True
+openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
+oreg_url=registry.example.com:5000/openshift3/ose-${component}:${version}
+openshift_examples_modify_imagestreams=true
+# https://bugzilla.redhat.com/show_bug.cgi?id=1419943
+osm_etcd_image=rhel7/etcd
+
+# Native high availability cluster method with optional load balancer.
+#openshift_master_cluster_method=native
+#openshift_master_cluster_hostname=openshift-ansible.test.example.com
+#openshift_master_cluster_public_hostname=openshift-ansible.test.example.com
+
+# Configure nodeIP in the node config
+# This is needed in cases where node traffic is desired to go over an
+# interface other than the default network interface.
+#openshift_set_node_ip=True
+
+# Configure the multi-tenant SDN plugin (default is 'redhat/openshift-ovs-subnet')
+os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
+
+# Configure SDN cluster network and kubernetes service CIDR blocks. These
+# network blocks should be private and should not conflict with network blocks
+# in your infrastructure that pods may require access to. Can not be changed
+# after deployment.
+osm_cluster_network_cidr=10.1.0.0/16
+openshift_portal_net=172.30.0.0/16
+osm_host_subnet_length=8
+
+# htpasswd auth
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
+
+# LDAP auth
+#openshift_master_identity_providers=[{'name': 'my_ldap_provider', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider', 'attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': '', 'bindPassword': '', 'ca': 'my-ldap-ca.crt', 'insecure': 'false', 'url': 'ldap://ldap.example.com:389/ou=users,dc=example,dc=com?uid'}]
+#openshift_master_ldap_ca_file=<path to local ca file to use>
+
+# Enable API service auditing, available as of 3.2
+openshift_master_audit_config={"enabled": true}
+
+# Provide local certificate paths which will be deployed to masters
+#openshift_master_named_certificates=[{"certfile": "/path/to/custom1.crt", "keyfile": "/path/to/custom1.key", "cafile": "/path/to/custom-ca1.crt"}]
+openshift_master_overwrite_named_certificates=true
+#openshift_hosted_router_certificate={"certfile": "/path/to/router.crt", "keyfile": "/path/to/router.key", "cafile": "/path/to/router-ca.crt"}
+
+# Override the default controller lease ttl
+#osm_controller_lease_ttl=30
+
+# Session options
+#openshift_master_session_name=ssn
+#openshift_master_session_max_seconds=3600
+
+# Install the openshift examples
+openshift_install_examples=false
+openshift_examples_modify_imagestreams=true
+
+# Configure node kubelet arguments. pods-per-core is valid in OpenShift Origin 1.3 or OpenShift Container Platform 3.3 and later.
+#openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
+openshift_node_kubelet_args={'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
+
+# default subdomain to use for exposed routes
+openshift_master_default_subdomain=apps.test.example.com
+
+# default project node selector
+osm_default_node_selector='region=primary'
+
+# OpenShift Router Options
+openshift_hosted_router_selector='region=infra'
+
+# Openshift Registry Options
+openshift_hosted_registry_selector='region=infra'
+openshift_hosted_registry_replicas=1
+
+# Registry Storage Options
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+#openshift_hosted_registry_storage_host=nfs01.example.com
+openshift_hosted_registry_storage_nfs_directory=/var/srv/nfs
+openshift_hosted_registry_storage_nfs_options='*(rw,root_squash,no_wdelay)'
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=10Gi
+
+# Metrics deployment
+openshift_hosted_metrics_deploy=true
+openshift_hosted_metrics_public_url=https://metrics.apps.test.example.com/hawkular/metrics
+openshift_hosted_metrics_deployer_prefix=registry.example.com:5000/openshift3/
+openshift_hosted_metrics_deployer_version=3.4.1
+
+# Metrics Storage Options
+openshift_hosted_metrics_storage_kind=nfs
+openshift_hosted_metrics_storage_access_modes=['ReadWriteOnce']
+#openshift_hosted_metrics_storage_host=nfs01.example.com
+openshift_hosted_metrics_storage_nfs_directory=/var/srv/nfs
+openshift_hosted_metrics_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_metrics_storage_volume_name=metrics
+openshift_hosted_metrics_storage_volume_size=10Gi
+
+# Logging deployment
+openshift_hosted_logging_deploy=true
+openshift_hosted_logging_master_public_url=https://logging.apps.test.example.com
+openshift_hosted_logging_hostname=logging.apps.test.example.com
+openshift_hosted_logging_ops_hostname=logging-ops.apps.test.example.com
+openshift_hosted_logging_deployer_prefix=registry.example.com:5000/openshift3/
+openshift_hosted_logging_deployer_version=3.4.1
+
+openshift_hosted_logging_curator_nodeselector='region=infra'
+openshift_hosted_logging_elasticsearch_nodeselector='region=infra'
+openshift_hosted_logging_fluentd_nodeselector='fluentd=true'
+openshift_hosted_logging_kibana_nodeselector='region=infra'
+
+# Logging storage config
+openshift_hosted_logging_storage_kind=nfs
+openshift_hosted_logging_storage_access_modes=['ReadWriteOnce']
+#openshift_hosted_logging_storage_host=nfs01.example.com
+openshift_hosted_logging_storage_nfs_directory=/var/srv/nfs
+openshift_hosted_logging_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_logging_storage_volume_name=logging
+openshift_hosted_logging_storage_volume_size=10Gi
+
+# Global Proxy Configuration
+# These options configure HTTP_PROXY, HTTPS_PROXY, and NOPROXY environment
+# variables for docker and master services.
+# https://docs.openshift.com/container-platform/latest/install_config/http_proxies.html
+#openshift_http_proxy=http://USER:PASSWORD@IPADDR:PORT
+#openshift_https_proxy=https://USER:PASSWORD@IPADDR:PORT
+#openshift_no_proxy=.hosts.example.com,some-host.com,10.1.0.0/16,172.30.0.0/16,.cluster.local
+openshift_generate_no_proxy_hosts=True
+
+# Or you may optionally define your own build defaults configuration serialized as json
+#openshift_builddefaults_json='{"BuildDefaults":{"configuration":{"apiVersion":"v1","env":[{"name":"HTTP_PROXY","value":"http://proxy.example.com.redhat.com:3128"},{"name":"NO_PROXY","value":"ose3-master.example.com"}],"gitHTTPProxy":"http://proxy.example.com:3128","gitNoProxy":"ose3-master.example.com","kind":"BuildDefaultsConfig"}}}'
+
+[nfs]
+nfs01.example.com containerized=false
+
+[masters]
+master01.example.com
+#master[01:03].example.com
+
+[etcd]
+master01.example.com
+#master[01:03].example.com
+
+#[lb]
+#loadbalancer01.example.com containerized=false
+
+[nodes]
+master01.example.com openshift_hostname=master01.example.com openshift_node_labels="{'fluentd':'true'}" openshift_schedulable=false
+#master02.example.com openshift_hostname=master02.example.com openshift_node_labels="{'fluentd':'true'}" openshift_schedulable=false
+#master03.example.com openshift_hostname=master03.example.com openshift_node_labels="{'fluentd':'true'}" openshift_schedulable=false
+
+infra01.example.com openshift_hostname=infra01.example.com openshift_node_labels="{'fluentd':'true', 'region':'infra', 'zone':'default', 'env':'infra'}"
+infra02.example.com openshift_hostname=infra02.example.com openshift_node_labels="{'fluentd':'true', 'region':'infra', 'zone':'default', 'env':'infra'}"
+
+node01.example.com openshift_hostname=node01.example.com openshift_node_labels="{'fluentd':'true', 'region':'primary', 'zone':'one', 'env':'dev'}"
+node02.example.com openshift_hostname=node02.example.com openshift_node_labels="{'fluentd':'true', 'region':'primary', 'zone':'two', 'env':'dev'}"
+node03.example.com openshift_hostname=node03.example.com openshift_node_labels="{'fluentd':'true', 'region':'primary', 'zone':'three', 'env':'prod'}"

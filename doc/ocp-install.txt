@@ -1,0 +1,38 @@
+# Note! For kickstart based installation, see conf/rhel-7-base.ks
+# For fully automated and/or Atomic install see bin/openshift-install*
+
+* RHEL 7 default installation on all needed nodes
+  + select correct timezone
+  + manual disk partitioning
+    - 1024M /boot
+    - 20G /root on LVM (at least)
+    - preferably a separate disk for the Docker VG, ~100G for prod
+* allow serial console (only if needed)
+  + sed -i -e 's,quiet,quiet console=tty0 console=ttyS0,115200,g' /boot/grub2/grub.cfg
+  + sed -i -e 's,quiet,quiet console=tty0 console=ttyS0,115200,g' /etc/default/grub
+* configure multipath (only if needed)
+  + yum install device-mapper-multipath
+  + /etc/multipath.conf
+  + systemctl enable multipathd
+  + dracut -f
+* configure network
+  + /etc/hosts
+  + /etc/resolv.conf
+  + /etc/sysconfig/network-scripts/ifcfg-*
+* create and configure Docker storage / VGs (only if using a partition)
+* ssh-keygen
+  + ssh-keygen -q -f /root/.ssh/id_rsa -N ''
+  + allow ssh for ansible, see bin/setup-etc-hosts and bin/setup-ssh
+* cd conf
+* either copy ansible.hosts.compact or ansible.hosts.full as ansible.hosts
+* vi ansible.hosts
+* ansible-playbook prep.yml
+* ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
+
+* uninstallation for a clean start
+  + ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/adhoc/uninstall.yml
+  + ansible-playbook uninst.yml
+  + possibly also
+    - ansible-playbook wipe-docker.yml
+    - ansible-playbook wipe-nfs.yml
+  + reboot recommended

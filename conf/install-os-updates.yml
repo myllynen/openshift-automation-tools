@@ -1,0 +1,207 @@
+---
+# https://docs.openshift.com/container-platform/latest/install_config/upgrading/os_upgrades.html
+# XXX Add/verify support for CNS/separate etcd/NFS nodes
+- name: Verify execution outside of OpenShift cluster
+  hosts: 127.0.0.1
+  connection: local
+  tasks:
+    - name: Verify execution host not part of the cluster
+      fail: msg="This playbook must be executed outside of the OpenShift cluster"
+      failed_when: "{{ ansible_fqdn in groups.nodes }}"
+
+- name: Verify credentials
+  hosts: masters[0]
+  become: true
+  tasks:
+    - name: Register current credentials on the first master
+      command: oc whoami
+      register: oc_user
+      changed_when: false
+      failed_when: false
+
+    - name: Verify system:admin credentials on the first master
+      fail: msg="Need to be system:admin on the first master"
+      failed_when: oc_user.stdout != "system:admin"
+
+- name: Install and enable excluder configurations
+  hosts: nodes
+  become: true
+  tasks:
+    - name: Install excluder packages
+      package: name={{ item }} state=latest
+      with_items:
+        - atomic-openshift-excluder
+        - atomic-openshift-docker-excluder
+
+    - name: Enable base excluder configurations
+      command: atomic-openshift-excluder exclude
+
+    - name: Enable docker excluder configurations
+      command: atomic-openshift-docker-excluder exclude
+
+- name: Register scheduling status
+  hosts: nodes
+  become: true
+  tasks:
+    # XXX Avoid shell/grep
+    # oc get node node.example.com -o jsonpath='{.spec.unschedulable}{"\n"}'
+    - name: Register scheduling status
+      shell: oc get nodes {{ inventory_hostname }} | grep -q SchedulingDisabled
+      delegate_to: "{{ groups.masters[0] }}"
+      register: scheduling_disabled
+      changed_when: false
+      failed_when: false
+
+    - name: Set scheduling fact
+      set_fact: schedulable={{ true if scheduling_disabled.rc == 1 else false }}
+
+- name: Register fluentd label
+  hosts: nodes
+  become: true
+  tasks:
+    # XXX Avoid shell/grep
+    - name: Register fluentd label
+      shell: >
+        oc get nodes --show-labels -o json {{ inventory_hostname }} | grep -Eo \".*fluentd\": | tr -d '"' | tr -d :
+      delegate_to: "{{ groups.masters[0] }}"
+      register: fluentd_label
+      changed_when: false
+      failed_when: false
+
+    - name: Set fluentd label fact
+      set_fact: fluentd_label={{ fluentd_label.stdout if fluentd_label.stdout != "" else false }}
+
+- name: Install OS updates on each node and reboot
+  hosts: nodes
+  become: true
+  serial: 1
+  tasks:
+    - name: Disable scheduling
+      command: oadm manage-node --schedulable=false {{ inventory_hostname }}
+      delegate_to: "{{ groups.masters[0] }}"
+      when: schedulable
+
+    - name: Drain node
+      command: oadm drain --force --delete-local-data --ignore-daemonsets {{ inventory_hostname }}
+      delegate_to: "{{ groups.masters[0] }}"
+
+    - name: Update packages
+      package: name=* state=latest
+
+    - name: Stop fluentd
+      command: oc label node --overwrite {{ inventory_hostname }} {{ fluentd_label }}=false
+      delegate_to: "{{ groups.masters[0] }}"
+      when: fluentd_label != false
+
+    - name: Wait for fluentd to terminate
+      shell: docker ps | grep -q logging-fluentd
+      register: fluentd_running
+      when: fluentd_label != false
+      until: fluentd_running | failure
+      changed_when: false
+      failed_when: false
+      retries: 12
+      delay: 10
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1441994
+    - name: Stop master HA services prior reboot
+      service: name={{ item }} state=stopped
+      with_items:
+        - atomic-openshift-master-controllers.service
+        - atomic-openshift-master-api.service
+      when: "{{ inventory_hostname in groups.masters and groups['masters'] | length > 1 }}"
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1441994
+    - name: Stop single master services prior reboot
+      service: name={{ item }} state=stopped
+      with_items:
+        - atomic-openshift-master.service
+      when: "{{ inventory_hostname in groups.masters and groups['masters'] | length == 1 }}"
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1441994
+    - name: Stop master services prior reboot
+      service: name={{ item }} state=stopped
+      with_items:
+        - atomic-openshift-node.service
+        - etcd_container.service
+        - openvswitch.service
+      when: "{{ inventory_hostname in groups.masters }}"
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1441994
+    - name: Stop node services prior reboot
+      service: name={{ item }} state=stopped
+      with_items:
+        - atomic-openshift-node.service
+        - openvswitch.service
+      when: "{{ inventory_hostname in groups.nodes and inventory_hostname not in groups.masters }}"
+
+    - name: Wait for containers to terminate
+      shell: docker ps -q | grep .
+      register: containers_running
+      until: containers_running | failure
+      changed_when: false
+      failed_when: false
+      retries: 10
+      delay: 6
+
+    - name: Register remaining containers
+      command: docker ps -q
+      register: remaining_containers
+      changed_when: false
+
+    # Prevent delays with stopping docker.service during reboot
+    - name: Kill remaining containers
+      command: docker kill "{{ item }}"
+      with_items: "{{ remaining_containers.stdout_lines }}"
+      failed_when: false
+
+    # Avoid detecting node Ready after reboot if not yet marked NotReady
+    # XXX Avoid shell/grep
+    # oc get node node.example.com -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+    - name: Wait for node to be marked offline
+      shell: oc get nodes {{ inventory_hostname }} | grep -q NotReady
+      delegate_to: "{{ groups.masters[0] }}"
+      register: node_offline
+      until: node_offline | success
+      retries: 30
+      delay: 10
+      when: "not {{ inventory_hostname in groups.masters and groups['masters'] | length == 1 }}"
+
+    - name: Reboot node
+      # https://github.com/ansible/ansible/issues/10616
+      shell: sleep 2 && shutdown -r now "Ansible reboot"
+      async: 1
+      poll: 0
+      ignore_errors: true
+
+    - name: Wait for node to reboot
+      local_action:
+        module: wait_for
+          host={{ inventory_hostname }}
+          port=22
+          delay=10
+          timeout=600
+
+    # XXX Avoid shell/grep
+    # oc get node node.example.com -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+    - name: Wait for node to become ready
+      shell: oc get nodes {{ inventory_hostname }} | grep -q " Ready"
+      delegate_to: "{{ groups.masters[0] }}"
+      register: node_online
+      until: node_online | success
+      retries: 30
+      delay: 10
+
+    - name: Start fluentd
+      command: oc label node --overwrite {{ inventory_hostname }} {{ fluentd_label }}=true
+      delegate_to: "{{ groups.masters[0] }}"
+      when: fluentd_label != false
+
+    - name: Enable scheduling
+      command: oadm manage-node --schedulable=true {{ inventory_hostname }}
+      delegate_to: "{{ groups.masters[0] }}"
+      when: schedulable
+
+    # XXX Should check for pods, if any
+    - name: Wait for node to calm down
+      pause: minutes=1

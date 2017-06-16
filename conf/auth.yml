@@ -1,0 +1,22 @@
+---
+- name: Create initial user
+  hosts: masters
+  become: true
+  tasks:
+    - name: Create htpasswd configuration file
+      # No htpasswd on Atomic
+      copy:
+        dest: /etc/origin/master/htpasswd
+        # bob/uncle
+        content: |
+          bob:$apr1$JZd4VvR2$2pwnEEQz5Dq12zdyKyMzA0
+
+- name: Grant permissions
+  hosts: masters[0]
+  become: true
+  tasks:
+    - name: Grant cluster-admin rights to Uncle Bob
+      command: oadm policy add-cluster-role-to-user cluster-admin bob
+
+    - name: Grant privileged SCC access to Uncle Bob
+      command: oadm policy add-scc-to-user privileged bob

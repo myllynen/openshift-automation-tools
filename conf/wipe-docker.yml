@@ -1,0 +1,44 @@
+---
+- name: Wipe out Docker configuration
+  hosts: nodes
+  become: true
+  tasks:
+    - name: Stop and disable Docker service
+      service: name=docker enabled=no state=stopped
+
+    - name: Remove all local data
+      shell:
+        find \
+        /var/lib/docker/* \
+        -maxdepth 1 -print 2> /dev/null | xargs rm -rf
+      args:
+        warn: false
+      failed_when: false
+      changed_when: false
+
+    - name: Reset Docker proxy configuration
+      lineinfile:
+        state=absent
+        dest=/etc/sysconfig/docker
+        regexp='(NO_PROXY|HTTP_PROXY|HTTPS_PROXY)=.*'
+
+    - name: Reset Docker registry configuration
+      lineinfile:
+        state=absent
+        dest=/etc/sysconfig/docker
+        regexp='(ADD_REGISTRY|BLOCK_REGISTRY|INSECURE_REGISTRY)=.*'
+
+    - name: Detect Docker storage configuration
+      shell: vgs -o name | grep docker
+      register: docker_vg_name
+      failed_when: false
+      changed_when: false
+
+    - name: Wipe out Docker storage contents
+      command: vgremove -f {{ item }}
+      with_items: "{{ docker_vg_name.stdout_lines }}"
+      when: docker_vg_name.rc == 0
+
+    - name: Wipe out Docker storage configuration
+      file: path=/etc/sysconfig/docker-storage state=absent
+      when: docker_vg_name.rc == 0

@@ -1,0 +1,134 @@
+---
+- name: Install Cockpit on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Detect Atomic Host
+      set_fact:
+        is_atomic: "{{ ansible_cmdline.root == '/dev/mapper/atomicos-root' }}"
+
+    - name: Install Cockpit common packages
+      package: name={{ item }} state=present
+      with_items:
+        - cockpit-bridge
+        - cockpit-pcp
+        - cockpit-system
+        - setroubleshoot-server
+      when: not is_atomic
+
+- name: Install Cockpit node packages
+  hosts: nodes
+  become: true
+  tasks:
+    - name: Install Cockpit node packages
+      package: name={{ item }} state=present
+      with_items:
+        - cockpit-docker
+      when: not is_atomic
+
+- name: Install Cockpit Web UI on masters
+  hosts: masters
+  become: true
+  tasks:
+    - name: Install Cockpit master packages
+      package: name={{ item }} state=present
+      with_items:
+        - cockpit-dashboard
+        - cockpit-kubernetes
+        - cockpit-ws
+      when: not is_atomic
+
+    - name: Pull Cockpit container image
+      command: docker pull rhel7/cockpit-ws
+      when: is_atomic
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1427606
+    - name: Create Cockpit systemd service unit
+      copy:
+        dest: /etc/systemd/system/cockpit.service
+        content: |
+          [Unit]
+          Description=Cockpit Web Service
+          Documentation=man:cockpit-ws(8)
+          Requires=docker.service
+          After=docker.service
+          [Service]
+          ExecStart=/usr/bin/atomic run -n cockpit-ws rhel7/cockpit-ws
+          ExecStop=/usr/bin/atomic stop -n cockpit-ws rhel7/cockpit-ws
+          [Install]
+          WantedBy=multi-user.target
+      when: is_atomic
+
+- name: Configure Cockpit dashboard
+  hosts: all
+  become: true
+  tasks:
+    - name: Set node colors
+      set_fact:
+        rgb1: "{{ ( inventory_hostname | hash | list | map('int',10) | sum ) % 256 }}"
+        rgb2: "{{ ( inventory_hostname | hash | list | map('int',20) | sum ) % 256 }}"
+        rgb3: "{{ ( inventory_hostname | hash | list | map('int',30) | sum ) % 256 }}"
+
+    - name: Create dashboard configuration
+      template:
+        src: cockpit-dashboard.j2
+        dest: /etc/cockpit/machines.d/99-webui.json
+
+- name: Prepare for SSH configuration
+  hosts: all
+  become: true
+  tasks:
+    - name: Set known_host entry
+      set_fact: known_host="{{ inventory_hostname + ' ecdsa-sha2-nistp256 ' + ansible_ssh_host_key_ecdsa_public }}"
+
+- name: Enable Cockpit cross-node SSH access
+  hosts: all
+  become: true
+  tasks:
+    - name: Create SSH known_hosts file
+      lineinfile:
+        create: true
+        dest: /etc/ssh/ssh_known_hosts
+        line: "{{ hostvars[item]['known_host'] }}"
+      with_items:
+        - "{{ play_hosts }}"
+
+- name: Enable Cockpit Web UI on masters
+  hosts: masters
+  become: true
+  tasks:
+    - name: Enable Cockpit service
+      service: name=cockpit.service enabled=yes state=started
+      when: is_atomic
+
+    - name: Enable Cockpit socket
+      service: name=cockpit.socket enabled=yes state=started
+      when: not is_atomic
+
+- name: Allow access to Cockpit
+  hosts: all
+  become: true
+  vars:
+    ocp_chain: OS_FIREWALL_ALLOW
+  tasks:
+    - name: Register iptables configuration
+      command: iptables -t filter -L "{{ ocp_chain }}"
+      register: iptables_chain
+      changed_when: false
+      failed_when: false
+
+    - name: Set iptables chain name
+      set_fact: chain={{ ocp_chain if iptables_chain.rc == 0 else 'INPUT' }}
+
+    - name: Update firewall rules
+      iptables:
+        table: filter
+        chain: "{{ chain }}"
+        ctstate: NEW
+        protocol: tcp
+        destination_port: "{{ item }}"
+        jump: ACCEPT
+      with_items:
+        - 9090

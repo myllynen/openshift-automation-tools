@@ -1,0 +1,8 @@
+{
+{% for host in play_hosts %}
+{% if inventory_hostname != hostvars[host]['inventory_hostname'] %}
+"{{ host }}":{"visible":true,"color":"rgb({{ hostvars[host]['rgb1'] }},{{ hostvars[host]['rgb2'] }},{{ hostvars[host]['rgb3'] }})","user":"root","address":"{{ host }}"}{% if not loop.last %},{%endif%}
+
+{% endif %}
+{% endfor %}
+}

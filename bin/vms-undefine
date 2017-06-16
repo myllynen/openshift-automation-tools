@@ -1,0 +1,11 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+for node in $NODES; do
+  virsh destroy $node
+  virsh snapshot-delete $node --snapshotname ocp-snap > /dev/null 2>&1
+  virsh undefine --remove-all-storage $node
+done
+
+exit 0

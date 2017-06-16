@@ -1,0 +1,24 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+sudo mkdir -p $WWW_ROOT/ks
+sudo cp -p $(dirname $0)/../conf/rhel-7-ocp.ks $WWW_ROOT/ks/
+sudo chmod a+r $WWW_ROOT/ks/rhel-7-ocp.ks
+
+if ! mount | grep -q " $WWW_ROOT/mnt "; then
+  sudo mkdir -p $WWW_ROOT/mnt
+  sudo mount -o loop $RHEL_ISO $WWW_ROOT/mnt || exit 1
+fi
+
+# httpd access
+if ! sudo iptables -n -t filter -L INPUT | grep -q "tcp dpt:80"; then
+  sudo iptables -t filter -I INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+fi
+
+# Registry on the host
+if ! iptables -n -t filter -L INPUT | grep -q "tcp dpt:5000"; then
+  iptables -t filter -I INPUT -p tcp -m state --state NEW -m tcp --dport 5000 -j ACCEPT
+fi
+
+sudo systemctl start httpd || exit 2

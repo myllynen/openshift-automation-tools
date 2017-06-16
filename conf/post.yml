@@ -1,0 +1,46 @@
+---
+- name: Finalize OpenShift installation
+  hosts: nodes
+  become: true
+  tasks:
+    - name: Detect Atomic Host
+      set_fact:
+        is_atomic: "{{ ansible_cmdline.root == '/dev/mapper/atomicos-root' }}"
+
+    - name: Enable Docker package excluder
+      command: atomic-openshift-docker-excluder exclude
+      when: not is_atomic
+
+    - name: Enable OpenShift package excluder
+      command: atomic-openshift-excluder exclude
+      when: not is_atomic
+
+- name: Finalize OpenShift configuration
+  hosts: masters[0]
+  become: true
+  vars:
+    cleanup_defaults: false
+  tasks:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1429366
+    - name: Register unused default templates
+      shell: oc get templates -n openshift --no-headers | awk '!/(registry)/ {print $1}'
+      register: templates
+      changed_when: false
+      when: cleanup_defaults
+
+    - name: Delete unused default templates
+      command: oc delete template -n openshift {{ item }}
+      with_items: "{{ templates.stdout_lines }}"
+      when: cleanup_defaults
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1429366
+    - name: Register unused default imagestreams
+      shell: oc get imagestreams -n openshift --no-headers | awk '{print $1}'
+      register: imagestreams
+      changed_when: false
+      when: cleanup_defaults
+
+    - name: Delete unused default imagestreams
+      command: oc delete imagestream -n openshift {{ item }}
+      with_items: "{{ imagestreams.stdout_lines }}"
+      when: cleanup_defaults

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# https://github.com/docker/docker-registry/blob/master/config/config_sample.yml
+rpm -q docker-registry > /dev/null 2>&1 || yum install -y docker-registry
+if ! grep -q ^intra: /etc/docker-registry.yml; then
+  systemctl stop docker-registry
+  mkdir -p /var/lib/docker-registry
+  cat <<EOF>> /etc/docker-registry.yml
+intra: &intra
+    <<: *common
+    loglevel: _env:LOGLEVEL:warn
+    storage: local
+    storage_path: _env:STORAGE_PATH:/var/lib/docker-registry
+    search_backend: _env:SEARCH_BACKEND:sqlalchemy
+    sqlalchemy_index_database: _env:SQLALCHEMY_INDEX_DATABASE:sqlite:////var/lib/docker-registry/docker-registry.db
+EOF
+  sed -i -e 's,^SETTINGS_FLAVOR=.*,SETTINGS_FLAVOR=intra,' /etc/sysconfig/docker-registry
+fi
+
+systemctl disable docker-distribution > /dev/null 2>&1 || :
+systemctl stop docker-distribution > /dev/null 2>&1 || :
+
+systemctl enable docker-registry
+systemctl start docker-registry

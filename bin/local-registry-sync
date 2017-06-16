@@ -1,0 +1,116 @@
+#!/bin/sh
+
+OSE_VERS=3.4
+REG_VERS=2
+UPSTREAM=registry.access.redhat.com
+REGISTRY=registry.example.com:5000
+
+ose_images="
+  openshift3/ose-deployer
+  openshift3/ose-docker-builder
+  openshift3/ose-docker-registry
+  openshift3/ose-haproxy-router
+  openshift3/ose-pod
+  openshift3/ose-sti-builder
+
+  openshift3/registry-console
+
+  openshift3/logging-auth-proxy
+  openshift3/logging-curator
+  openshift3/logging-deployer
+  openshift3/logging-elasticsearch
+  openshift3/logging-fluentd
+  openshift3/logging-kibana
+
+  openshift3/metrics-cassandra
+  openshift3/metrics-deployer
+  openshift3/metrics-hawkular-metrics
+  openshift3/metrics-heapster
+"
+
+ose_images_cont="
+  rhel7/cockpit
+  rhel7/etcd
+  openshift3/ose
+  openshift3/node
+  openshift3/openvswitch
+"
+
+ose_images_opt="
+  openshift3/ose-egress-router
+  openshift3/ose-keepalived-ipfailover
+  openshift3/ose-recycler
+
+  openshift3/image-inspector
+"
+
+xpaas_images="
+  redhat-openjdk-18/openjdk18-openshift
+  jboss-webserver-3/webserver30-tomcat8-openshift
+  jboss-eap-7/eap70-openshift
+  redhat-sso-7/sso70-openshift
+  rhscl/postgresql-95-rhel7
+"
+
+jenkins_images="
+  openshift3/jenkins-1-rhel7
+  openshift3/jenkins-2-rhel7
+  openshift3/jenkins-slave-base-rhel7
+  openshift3/jenkins-slave-maven-rhel7
+  openshift3/jenkins-slave-nodejs-rhel7
+"
+
+# Configure Docker if needed
+rpm -q docker > /dev/null 2>&1 || yum install -y docker
+if ! grep -q "add-registry $REGISTRY" /etc/sysconfig/docker; then
+  systemctl stop docker
+  sed -i -e 's,--log-driver=,--log-level=warn --log-driver=,' /etc/sysconfig/docker
+  sed -i -e 's,--log-level=,--max-concurrent-downloads=10 --log-level=,' /etc/sysconfig/docker
+  sed -i -e 's,--log-level=,--max-concurrent-uploads=10 --log-level=,' /etc/sysconfig/docker
+  sed -i -e 's,^ADD_REGISTRY=,#ADD_REGISTRY=,' /etc/sysconfig/docker
+  sed -i -e 's,^BLOCKED_REGISTRY=,#BLOCKED_REGISTRY=,' /etc/sysconfig/docker
+  sed -i -e 's,^INSECURE_REGISTRY=,#INSECURE_REGISTRY=,' /etc/sysconfig/docker
+  cat <<EOF>> /etc/sysconfig/docker
+ADD_REGISTRY='--add-registry $REGISTRY --add-registry $UPSTREAM'
+BLOCK_REGISTRY='--block-registry all'
+EOF
+  if [ $REG_VERS -eq 1 ]; then
+    echo INSECURE_REGISTRY=\'--insecure-registry $REGISTRY\' >> /etc/sysconfig/docker
+  fi
+  systemctl enable docker
+fi
+systemctl start docker
+
+# Pull
+for img in $ose_images $ose_images_cont; do
+  avail="$(curl -s https://$UPSTREAM/v1/repositories/$img/tags | grep -Po '"v?'${OSE_VERS/\./\\.}'.*?"' | tr -d '"' | sort -V)"
+  # rhel7/etcd has its own versioning
+  [ "$img" = "rhel7/etcd" ] && docker pull $UPSTREAM/$img
+  [ -n "$avail" ] || continue
+  # Get latest images with and without v in the tag / patch level
+  tags=""
+  tags="$tags $(printf %s\\n $avail | grep ^v | tail -n 1)"
+  tags="$tags $(printf %s\\n $avail | grep -v ^v | tail -n 1)"
+  tags="$tags $(printf %s\\n $avail | grep ^v | grep -v -- - | tail -n 1)"
+  tags="$tags $(printf %s\\n $avail | grep -v ^v | grep -v -- - | tail -n 1)"
+  tags="$(echo $tags | tr ' ' '\n' | sort -u)"
+  for tag in $tags; do
+    docker pull $UPSTREAM/$img:$tag || exit 1
+  done
+done
+
+for img in $xpaas_images $jenkins_images; do
+  # Latest only
+  docker pull $UPSTREAM/$img || exit 2
+done
+
+# Push
+images="$(docker images)"
+for img in $ose_images $ose_images_cont $xpaas_images $jenkins_images; do
+  for tag in $(printf %s\\n "$images" | awk '/'$UPSTREAM\\/${img/\//\\/}' / {print $2}'); do
+    [ "$tag" = "<none>" ] && continue
+    docker tag $UPSTREAM/$img:$tag $REGISTRY/$img:$tag || exit 3
+    docker push $REGISTRY/$img:$tag || exit 4
+    docker rmi $REGISTRY/$img:$tag || exit 5
+  done
+done

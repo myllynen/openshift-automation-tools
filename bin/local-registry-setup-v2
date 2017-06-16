@@ -1,0 +1,29 @@
+#!/bin/sh
+
+REGISTRY=registry.example.com:5000
+
+# https://github.com/docker/distribution/blob/master/docs/configuration.md
+if ! rpm -q docker-distribution > /dev/null 2>&1; then
+  yum install -y docker-distribution
+  sed -i -e 's,\(log:\),\1\n  level: warn,' /etc/docker-distribution/registry/config.yml
+  cat <<EOF>> /etc/docker-distribution/registry/config.yml
+    relativeurls: true
+    secret: changeme
+    tls:
+      certificate: /etc/docker-distribution/registry/cert.crt
+      key: /etc/docker-distribution/registry/key.key
+      #clientcas: /etc/docker-distribution/registry/ca.crt
+EOF
+  pushd /etc/docker-distribution/registry
+  openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 3650 \
+    -keyout key.key -out cert.crt -subj "/CN=${REGISTRY/:*/}" || exit 1
+  mkdir -p /etc/docker/certs.d/$REGISTRY
+  ln -sf /etc/docker-distribution/registry/cert.crt /etc/docker/certs.d/$REGISTRY/cert.crt
+  popd
+fi
+
+systemctl disable docker-registry > /dev/null 2>&1 || :
+systemctl stop docker-registry > /dev/null 2>&1 || :
+
+systemctl enable docker-distribution
+systemctl start docker-distribution

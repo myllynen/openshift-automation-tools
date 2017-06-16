@@ -1,0 +1,171 @@
+---
+- name: Preparations to speed up OpenShift installation
+  hosts: all
+  become: true
+  tasks:
+    - name: Set source registry
+      set_fact:
+        # docker pull -a makes sense only with a local registry
+        registry: "{{ openshift_docker_additional_registries }}"
+
+    - name: Detect Atomic Host
+      set_fact:
+        is_atomic: "{{ ansible_cmdline.root == '/dev/mapper/atomicos-root' }}"
+
+    - name: Install packages | all nodes
+      package: name={{ item }} state=present
+      with_items:
+        - PyYAML
+        - iproute
+        - iptables
+        - iptables-services
+        - nfs-utils
+        - python-dbus
+        - python-six
+        - yum-utils
+      when: not is_atomic
+
+- hosts: masters
+  become: true
+  tasks:
+    - name: Install needed packages | masters
+      package: name={{ item }} state=present
+      with_items:
+        - httpd-tools
+      when: not is_atomic
+
+    - name: Start Docker service
+      service: name=docker state=started
+
+    - name: Pull needed images | masters
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/ose"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: etcd
+  become: true
+  tasks:
+    # https://github.com/openshift/openshift-ansible/issues/2968
+    - name: Install needed packages | etcd
+      package: name={{ item }} state=present
+      with_items:
+       - etcd
+      when: not is_atomic
+
+    - name: Start Docker service
+      service: name=docker state=started
+
+    - name: Pull needed images | etcd
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/rhel7/etcd"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    - name: Start Docker service
+      service: name=docker state=started
+
+    - name: Pull needed images | nodes
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/node"
+        - "{{ registry }}/openshift3/openvswitch"
+        - "{{ registry }}/openshift3/ose-pod"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    # XXX No NodeSelector available for ose-deployer
+    - name: Pull needed images | nodes:!masters
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/ose-deployer"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    # https://github.com/openshift/openshift-ansible/issues/2879
+    - name: Pull needed images | registry
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/ose-docker-builder"
+        - "{{ registry }}/openshift3/ose-docker-registry"
+        - "{{ registry }}/openshift3/registry-console"
+      when: "{{ openshift_node_labels is defined and 
+                openshift_node_labels['region'] == 'infra' }}"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes!:masters
+  become: true
+  tasks:
+    - name: Pull needed images | router
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/ose-haproxy-router"
+      when: "{{ openshift_node_labels is defined and 
+                openshift_node_labels['region'] == 'infra' }}"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    - name: Pull needed images | logging
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/logging-auth-proxy"
+        - "{{ registry }}/openshift3/logging-curator"
+        - "{{ registry }}/openshift3/logging-elasticsearch"
+        - "{{ registry }}/openshift3/logging-kibana"
+      when: "{{ openshift_node_labels is defined and 
+                openshift_node_labels['region'] == 'infra' }}"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes
+  become: true
+  tasks:
+    - name: Pull needed images | logging | fluentd
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/logging-fluentd"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1406057
+    - name: Pull needed images | metrics
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/metrics-cassandra"
+        - "{{ registry }}/openshift3/metrics-hawkular-metrics"
+        - "{{ registry }}/openshift3/metrics-heapster"
+      when: "{{ openshift_node_labels is defined and 
+                openshift_node_labels['region'] == 'infra' }}"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"
+
+# https://github.com/openshift/openshift-ansible/issues/2879
+- hosts: nodes:!masters
+  become: true
+  tasks:
+    - name: Pull needed images | buglet
+      command: docker pull -a {{ item }}
+      with_items:
+        - "{{ registry }}/openshift3/registry-console"
+      when: "{{ openshift_node_labels is defined and 
+                openshift_node_labels['region'] == 'infra' }}"
+      register: pull_output
+      changed_when: "'Pull complete' in pull_output.stdout"

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+for node in $NODES; do
+  IP=$(virsh domifaddr $node | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+  if [ -z "$IP" ]; then exit 2 ; fi
+  sed -i -e '/'$node'/d' -e '/'$IP' /d' $HOME/.ssh/known_hosts 2> /dev/null
+  echo p | sshpass ssh-copy-id -o StrictHostKeyChecking=no root@$node.$DOMAIN || exit 3
+  echo p | sshpass ssh-copy-id -o StrictHostKeyChecking=no root@$node || exit 3
+done

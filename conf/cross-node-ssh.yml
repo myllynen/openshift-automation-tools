@@ -1,0 +1,105 @@
+---
+# Use -e keys=unique to create unique keys for each host
+# Pass --become-user=<user> to create keys for another user
+# Use -e user_shell=<shell> to change shell for the user
+- name: Ensure user directory exists
+  hosts: all
+  become: true
+  become_method: su
+  become_flags: '-s /bin/sh'
+  tasks:
+    - setup: filter=ansible_user_*
+
+    - name: Ensure user directory exists
+      user: name={{ ansible_user_id }} state=present
+      become: true
+      become_user: root
+
+    - name: Set user shell
+      user: name={{ ansible_user_id }} shell={{ user_shell }} state=present
+      become: true
+      become_user: root
+      when: "user_shell is defined and '/' in user_shell"
+
+- name: Create user SSH keys for cross-node access
+  hosts: "{{ 'all' if keys | default(none) == 'unique' else 'all[0]' }}"
+  become: true
+  become_method: su
+  become_flags: '-s /bin/sh'
+  tasks:
+    - name: Generate public/private SSH RSA key pair
+      user: name={{ ansible_user_id }} state=present generate_ssh_key=yes
+
+    - name: Register public SSH key
+      slurp: src={{ ansible_user_dir }}/.ssh/id_rsa.pub
+      register: public_key
+
+    - name: Register private SSH key
+      slurp: src={{ ansible_user_dir }}/.ssh/id_rsa
+      register: private_key
+
+    - name: Set public SSH key fact
+      set_fact: public_ssh_key={{ public_key['content'] | b64decode }}
+
+    - name: Set private SSH key fact
+      set_fact: private_ssh_key={{ private_key['content'] | b64decode }}
+
+- name: Set common SSH key fact
+  hosts: "{{ 'all:!all[0]' if keys | default(none) != 'unique' else 'all[0]' }}"
+  tasks:
+    - name: Set common public SSH key fact
+      set_fact: public_ssh_key={{ hostvars[groups['all'][0]]['public_ssh_key'] }}
+      when: keys | default(none) != 'unique'
+
+    - name: Set common private SSH key fact
+      set_fact: private_ssh_key={{ hostvars[groups['all'][0]]['private_ssh_key'] }}
+      when: keys | default(none) != 'unique'
+
+- name: Distribute common SSH key
+  hosts: "{{ 'all:!all[0]' if keys | default(none) != 'unique' else 'all[0]' }}"
+  become: true
+  become_method: su
+  become_flags: '-s /bin/sh'
+  tasks:
+    - name: Ensure user SSH directory exists
+      file: path={{ ansible_user_dir }}/.ssh state=directory mode=0700
+      when: keys | default(none) != 'unique'
+
+    - name: Create public SSH key
+      copy: content={{ hostvars[groups['all'][0]]['public_ssh_key'] }} dest={{ ansible_user_dir }}/.ssh/id_rsa.pub
+      when: keys | default(none) != 'unique'
+
+    - name: Create private SSH key
+      copy: content={{ hostvars[groups['all'][0]]['private_ssh_key'] }} dest={{ ansible_user_dir }}/.ssh/id_rsa mode=0600
+      when: keys | default(none) != 'unique'
+
+- name: Enable cross-node SSH access
+  hosts: all
+  become: true
+  become_method: su
+  become_flags: '-s /bin/sh'
+  tasks:
+    - name: Update authorized keys
+      authorized_key:
+        user: "{{ ansible_user_id }}"
+        key: "{{ hostvars[item]['public_ssh_key'] }}"
+      with_items:
+        - "{{ play_hosts }}"
+
+    - name: Update known_hosts file | FQDN entry
+      lineinfile:
+        create: true
+        dest: "{{ ansible_user_dir }}/.ssh/known_hosts"
+        line: "{{ item + ',' + hostvars[item]['ansible_default_ipv4']['address'] + ' ' +
+                  'ecdsa-sha2-nistp256' + ' ' + hostvars[item]['ansible_ssh_host_key_ecdsa_public'] }}"
+      with_items:
+        - "{{ play_hosts }}"
+
+    - name: Update known_hosts file | short entry
+      lineinfile:
+        create: true
+        dest: "{{ ansible_user_dir }}/.ssh/known_hosts"
+        line: "{{ hostvars[item]['ansible_hostname'] + ',' + hostvars[item]['ansible_default_ipv4']['address'] + ' ' +
+                  'ecdsa-sha2-nistp256' + ' ' + hostvars[item]['ansible_ssh_host_key_ecdsa_public'] }}"
+      with_items:
+        - "{{ play_hosts }}"

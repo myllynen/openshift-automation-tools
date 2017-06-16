@@ -1,0 +1,18 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+for node in $NODES; do
+  IP=
+  while [ -z "$IP" ]; do
+    IP=$(virsh domifaddr $node | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+    [ -z "$IP" ] && sleep 2
+  done
+  if [ "$USE_DNS" != "yes" ]; then
+    sudo sed -i -e '/'$node.$DOMAIN' /d' /etc/hosts
+    sudo echo $IP $node.$DOMAIN $node >> /etc/hosts
+  fi
+done
+
+sudo killall -HUP dnsmasq > /dev/null 2>&1
+cp /etc/hosts $(dirname $0)/../conf/etc-hosts

@@ -1,0 +1,19 @@
+---
+- name: Update /etc/hosts across all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Update /etc/hosts
+      copy: src=etc-hosts dest=/etc/hosts
+      register: hosts
+
+    - name: Check dnsmasq service status
+      command: systemctl status	dnsmasq.service
+      register:	dnsmasq_status
+      changed_when: false
+      failed_when: false
+      when: hosts | changed
+
+    - name: Restart dnsmasq service
+      service: name=dnsmasq state=restarted
+      when: hosts | changed and dnsmasq_status.rc == 0

@@ -1,0 +1,13 @@
+---
+- name: Wait for hosts to be reachable
+  hosts: all
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Waiting for hosts
+      local_action:
+        module: wait_for
+          host={{ inventory_hostname }}
+          port=22
+          delay=10
+          timeout=600

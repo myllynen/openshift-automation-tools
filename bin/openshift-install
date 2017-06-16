@@ -1,0 +1,62 @@
+#!/bin/sh
+
+BASE="$(dirname $0)/.."
+. $BASE/conf/nodes.conf || exit 1
+cd $BASE/bin || exit 2
+
+# Helper
+function wait_running () {
+  while true; do
+    ready=1
+    state="$(virsh list --all)"
+    for node in $NODES; do
+      printf %s\\n "$state" | grep running | grep -q $node && ready=0
+    done
+    [ $ready -eq 1 ] && break
+    sleep 5
+  done
+}
+
+# Setup and sync local registry if needed
+#./local-registry-setup-v2 || exit 3
+#./local-registry-sync || exit 4
+
+# Main
+if ! virsh snapshot-info --domain ${NODES%% *} --snapshotname ocp-snap > /dev/null 2>&1; then
+  # New or unclean environment, start from scratch
+  #ansible-playbook $BASE/conf/wipe-nfs.yml > /dev/null 2>&1
+  ./vms-undefine > /dev/null 2>&1
+  ./inst-env-prep || exit 5
+  ./vms-create
+  wait_running
+  ./vms-start
+  ./setup-etc-hosts
+  ansible-playbook $BASE/conf/wait-for-hosts.yml
+  ./setup-ssh || exit 6
+  ./setup-iptables || exit 7
+  ansible-playbook $BASE/conf/prep.yml || exit 8
+  #ansible-playbook $BASE/conf/pre-pop.yml
+  ansible all -a "reboot" > /dev/null 2>&1
+  ansible-playbook $BASE/conf/wait-for-hosts.yml
+  sleep 90
+  ./vms-stop
+  wait_running
+  ./snapshots-create
+else
+  ./vms-destroy
+  wait_running
+  ./snapshots-revert
+fi
+./vms-start
+ansible-playbook $BASE/conf/wait-for-hosts.yml
+ansible-playbook $BASE/conf/prep.yml
+time ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml || exit 9
+ansible-playbook $BASE/conf/post.yml
+ansible-playbook $BASE/conf/auth.yml || exit 10
+#ansible-playbook $BASE/conf/cross-node-ssh.yml
+#ansible-playbook $BASE/conf/cross-node-cockpit.yml
+echo "Done. Enjoy your OpenShift installation at:"
+echo
+echo "https://$(hostname -f):8443/console/"
+
+exit 0

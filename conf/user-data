@@ -1,0 +1,15 @@
+#cloud-config
+ssh_pwauth: true
+disable_root: false
+users:
+  - name: root
+chpasswd:
+    list: |
+      root:p
+    expire: false
+write_files:
+  - path: /etc/sysconfig/docker-storage-setup
+    content: |
+      WIPE_SIGNATURES=true
+      DEVS=/dev/vdb
+      VG=docker-vg

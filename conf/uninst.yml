@@ -1,0 +1,67 @@
+---
+# https://bugzilla.redhat.com/show_bug.cgi?id=1412559
+# https://github.com/openshift/openshift-ansible/issues/3082
+- name: Finalize OpenShift uninstallation
+  hosts: all
+  become: true
+  tasks:
+    - name: Stop and disable Docker service
+      service: name=docker enabled=no state=stopped
+
+    - name: Delete leftover network interfaces
+      command: nmcli device delete {{ item }}
+      with_items:
+        - br0
+        - ovs-system
+        - tun0
+        - vxlan_sys_4789
+      register: device
+      changed_when: device.rc == 0
+      failed_when: false
+
+    - name: Remove leftover local data
+      shell:
+        find \
+        /etc/ansible/facts.d/* \
+        /var/lib/etcd \
+        /etc/sysconfig/atomic-* \
+        /etc/pki/ca-trust/source/anchors/openshift* \
+        /etc/openvswitch /var/log/openvswitch \
+        /tmp/ansible* /tmp/openshift* /tmp/tmp* \
+        -maxdepth 1 -print 2> /dev/null | xargs rm -rf
+      args:
+        warn: false
+      failed_when: false
+      changed_when: false
+
+    - name: Reset Docker proxy configuration
+      lineinfile:
+        state=absent
+        dest=/etc/sysconfig/docker
+        regexp='(NO_PROXY|HTTP_PROXY|HTTPS_PROXY)=.*'
+
+    - name: Reset Docker registry configuration
+      lineinfile:
+        state=absent
+        dest=/etc/sysconfig/docker
+        regexp='(ADD_REGISTRY|BLOCK_REGISTRY|INSECURE_REGISTRY)=.*'
+
+    - name: Restore default iptables configuration
+      copy:
+        dest: /etc/sysconfig/iptables
+        content: |
+          *filter
+          :INPUT ACCEPT [0:0]
+          :FORWARD ACCEPT [0:0]
+          :OUTPUT ACCEPT [0:0]
+          -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+          -A INPUT -p icmp -j ACCEPT
+          -A INPUT -i lo -j ACCEPT
+          -A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+          -A INPUT -j REJECT --reject-with icmp-host-prohibited
+          -A FORWARD -j REJECT --reject-with icmp-host-prohibited
+          COMMIT
+
+    - name: Stop iptables
+      service: name=iptables state=stopped
+      failed_when: false

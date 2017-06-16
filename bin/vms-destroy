@@ -1,0 +1,7 @@
+#!/bin/sh
+
+. $(dirname $0)/../conf/nodes.conf || exit 1
+
+for node in $NODES; do
+  virsh destroy $node
+done
