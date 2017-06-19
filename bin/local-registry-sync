@@ -17,13 +17,11 @@ ose_images="
 
   openshift3/logging-auth-proxy
   openshift3/logging-curator
-  openshift3/logging-deployer
   openshift3/logging-elasticsearch
   openshift3/logging-fluentd
   openshift3/logging-kibana
 
   openshift3/metrics-cassandra
-  openshift3/metrics-deployer
   openshift3/metrics-hawkular-metrics
   openshift3/metrics-heapster
 "
