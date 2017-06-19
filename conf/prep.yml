@@ -68,7 +68,7 @@
       when: not is_atomic and use_subs_mgr
 
     - name: Enable needed repos with subscription-manager
-      command: echo subscription-manager repos --enable=rhel-7-server --enable=rhel-7-server-ose-{{ ose_ver }}-rpms --enable=rhel-7-server-rpms --enable=rhel-7-server-extras-rpms --enable=rhel-7-server-optional-rpms {{ enable_fast_datapath | default(none) }}
+      command: subscription-manager repos --enable=rhel-7-server-rpms --enable=rhel-7-server-extras-rpms --enable=rhel-7-server-ose-{{ ose_ver }}-rpms {{ enable_fast_datapath | default(none) }} --enable=rhel-7-server-optional-rpms
       when: not is_atomic and use_subs_mgr
 
     - name: Configure repositories by using repo files
