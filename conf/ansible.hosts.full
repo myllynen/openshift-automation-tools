@@ -22,7 +22,7 @@ ansible_ssh_user=root
 # Debug level for all OpenShift components (Defaults to 2)
 debug_level=2
 
-# deployment type valid values are origin, online, atomic-enterprise, and openshift-enterprise
+# Specify the deployment type. Valid values are origin and openshift-enterprise.
 deployment_type=openshift-enterprise
 
 # Containerized deployment
@@ -299,7 +299,7 @@ openshift_hosted_router_selector='region=infra'
 # Router replicas (optional)
 # Unless specified, openshift-ansible will calculate the replica count
 # based on the number of nodes matching the openshift router selector.
-#openshift_hosted_router_replicas=1
+#openshift_hosted_router_replicas=2
 #
 # Router force subdomain (optional)
 # A router path format to force on all routes used by this router
@@ -619,6 +619,16 @@ os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
 # network blocks should be private and should not conflict with network blocks
 # in your infrastructure that pods may require access to. Can not be changed
 # after deployment.
+#
+# WARNING : Do not pick subnets that overlap with the default Docker bridge subnet of
+# 172.17.0.0/16.  Your installation will fail and/or your configuration change will
+# cause the Pod SDN or Cluster SDN to fail.
+#
+# WORKAROUND : If you must use an overlapping subnet, you can configure a non conflicting
+# docker0 CIDR range by adding '--bip=192.168.2.1/24' to DOCKER_NETWORK_OPTIONS
+# environment variable located in /etc/sysconfig/docker-network.
+#osm_cluster_network_cidr=10.128.0.0/14
+#openshift_portal_net=172.30.0.0/16
 osm_cluster_network_cidr=10.1.0.0/16
 openshift_portal_net=172.30.0.0/16
 
@@ -749,7 +759,7 @@ openshift_node_kubelet_args={'image-gc-high-threshold': ['90'], 'image-gc-low-th
 # https://docs.openshift.com/container-platform/latest/install_config/http_proxies.html
 #openshift_http_proxy=http://USER:PASSWORD@IPADDR:PORT
 #openshift_https_proxy=https://USER:PASSWORD@IPADDR:PORT
-#openshift_no_proxy=.hosts.example.com,some-host.com,10.1.0.0/16,172.30.0.0/16,.cluster.local
+#openshift_no_proxy='.hosts.example.com,some-host.com'
 #
 # Most environments don't require a proxy between openshift masters, nodes, and
 # etcd hosts. So automatically add those hostnames to the openshift_no_proxy list.
@@ -764,10 +774,10 @@ openshift_generate_no_proxy_hosts=True
 # https://docs.openshift.org/latest/admin_guide/build_defaults_overrides.html
 #openshift_builddefaults_http_proxy=http://USER:PASSWORD@HOST:PORT
 #openshift_builddefaults_https_proxy=https://USER:PASSWORD@HOST:PORT
-#openshift_builddefaults_no_proxy=build_defaults
+#openshift_builddefaults_no_proxy=mycorp.com
 #openshift_builddefaults_git_http_proxy=http://USER:PASSWORD@HOST:PORT
 #openshift_builddefaults_git_https_proxy=https://USER:PASSWORD@HOST:PORT
-#openshift_builddefaults_git_no_proxy=build_defaults
+#openshift_builddefaults_git_no_proxy=mycorp.com
 #openshift_builddefaults_image_labels=[{'name':'imagelabelname1','value':'imagelabelvalue1'}]
 #openshift_builddefaults_nodeselectors={'nodelabel1':'nodelabelvalue1'}
 #openshift_builddefaults_annotations={'annotationkey1':'annotationvalue1'}

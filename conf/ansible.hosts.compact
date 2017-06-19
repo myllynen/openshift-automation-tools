@@ -162,7 +162,7 @@ openshift_hosted_logging_storage_volume_size=10Gi
 # https://docs.openshift.com/container-platform/latest/install_config/http_proxies.html
 #openshift_http_proxy=http://USER:PASSWORD@IPADDR:PORT
 #openshift_https_proxy=https://USER:PASSWORD@IPADDR:PORT
-#openshift_no_proxy=.hosts.example.com,some-host.com,10.1.0.0/16,172.30.0.0/16,.cluster.local
+#openshift_no_proxy='.hosts.example.com,some-host.com'
 openshift_generate_no_proxy_hosts=True
 
 # Or you may optionally define your own build defaults configuration serialized as json
