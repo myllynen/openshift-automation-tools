@@ -16,7 +16,7 @@
   become: true
   tasks:
     - name: Grant cluster-admin rights to Uncle Bob
-      command: oadm policy add-cluster-role-to-user cluster-admin bob
+      command: oc adm policy add-cluster-role-to-user cluster-admin bob
 
     - name: Grant privileged SCC access to Uncle Bob
-      command: oadm policy add-scc-to-user privileged bob
+      command: oc adm policy add-scc-to-user privileged bob

@@ -77,12 +77,12 @@
   serial: 1
   tasks:
     - name: Disable scheduling
-      command: oadm manage-node --schedulable=false {{ inventory_hostname }}
+      command: oc adm manage-node --schedulable=false {{ inventory_hostname }}
       delegate_to: "{{ groups.masters[0] }}"
       when: schedulable
 
     - name: Drain node
-      command: oadm drain --force --delete-local-data --ignore-daemonsets {{ inventory_hostname }}
+      command: oc adm drain --force --delete-local-data --ignore-daemonsets {{ inventory_hostname }}
       delegate_to: "{{ groups.masters[0] }}"
 
     - name: Update packages
@@ -198,7 +198,7 @@
       when: fluentd_label != false
 
     - name: Enable scheduling
-      command: oadm manage-node --schedulable=true {{ inventory_hostname }}
+      command: oc adm manage-node --schedulable=true {{ inventory_hostname }}
       delegate_to: "{{ groups.masters[0] }}"
       when: schedulable
 
