@@ -17,8 +17,8 @@ ansible_ssh_user=root
 deployment_type=openshift-enterprise
 containerized=true
 openshift_release=v3.4
-openshift_image_tag=v3.4.1.33
-openshift_pkg_version=-3.4.1.33
+openshift_image_tag=v3.4.1.37
+openshift_pkg_version=-3.4.1.37
 
 # Configure usage of openshift_clock role.
 openshift_clock_enabled=true
