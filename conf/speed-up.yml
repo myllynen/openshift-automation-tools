@@ -100,7 +100,7 @@
         - "{{ registry }}/openshift3/ose-docker-builder"
         - "{{ registry }}/openshift3/ose-docker-registry"
         - "{{ registry }}/openshift3/registry-console"
-      when: "{{ openshift_node_labels is defined and 
+      when: "{{ openshift_node_labels is defined and
                 openshift_node_labels['region'] == 'infra' }}"
       register: pull_output
       changed_when: "'Pull complete' in pull_output.stdout"
@@ -112,7 +112,7 @@
       command: docker pull -a {{ item }}
       with_items:
         - "{{ registry }}/openshift3/ose-haproxy-router"
-      when: "{{ openshift_node_labels is defined and 
+      when: "{{ openshift_node_labels is defined and
                 openshift_node_labels['region'] == 'infra' }}"
       register: pull_output
       changed_when: "'Pull complete' in pull_output.stdout"
@@ -127,7 +127,7 @@
         - "{{ registry }}/openshift3/logging-curator"
         - "{{ registry }}/openshift3/logging-elasticsearch"
         - "{{ registry }}/openshift3/logging-kibana"
-      when: "{{ openshift_node_labels is defined and 
+      when: "{{ openshift_node_labels is defined and
                 openshift_node_labels['region'] == 'infra' }}"
       register: pull_output
       changed_when: "'Pull complete' in pull_output.stdout"
@@ -152,7 +152,7 @@
         - "{{ registry }}/openshift3/metrics-cassandra"
         - "{{ registry }}/openshift3/metrics-hawkular-metrics"
         - "{{ registry }}/openshift3/metrics-heapster"
-      when: "{{ openshift_node_labels is defined and 
+      when: "{{ openshift_node_labels is defined and
                 openshift_node_labels['region'] == 'infra' }}"
       register: pull_output
       changed_when: "'Pull complete' in pull_output.stdout"
@@ -165,7 +165,7 @@
       command: docker pull -a {{ item }}
       with_items:
         - "{{ registry }}/openshift3/registry-console"
-      when: "{{ openshift_node_labels is defined and 
+      when: "{{ openshift_node_labels is defined and
                 openshift_node_labels['region'] == 'infra' }}"
       register: pull_output
       changed_when: "'Pull complete' in pull_output.stdout"
