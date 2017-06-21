@@ -1,13 +1,17 @@
 ---
 # https://bugzilla.redhat.com/show_bug.cgi?id=1412559
 # https://github.com/openshift/openshift-ansible/issues/3082
-- name: Finalize OpenShift uninstallation
-  hosts: all
+- name: Stop and disable Docker
+  hosts: nodes
   become: true
   tasks:
     - name: Stop and disable Docker service
       service: name=docker enabled=no state=stopped
 
+- name: Finalize OpenShift uninstallation
+  hosts: all
+  become: true
+  tasks:
     - name: Delete leftover network interfaces
       command: nmcli device delete {{ item }}
       with_items:
@@ -23,10 +27,17 @@
       shell:
         find \
         /etc/ansible/facts.d/* \
+        /etc/etcd \
         /var/lib/etcd \
+        /etc/origin \
+        /var/lib/origin \
         /etc/sysconfig/atomic-* \
         /etc/pki/ca-trust/source/anchors/openshift* \
         /etc/openvswitch /var/log/openvswitch \
+        /etc/systemd/system/docker.service.wants/atomic* \
+        /etc/systemd/system/docker.service.wants/etcd* \
+        /etc/systemd/system/docker.service.wants/openvswitch* \
+        /var/lib/cni/networks/openshift-sdn \
         /tmp/ansible* /tmp/openshift* /tmp/tmp* \
         -maxdepth 1 -print 2> /dev/null | xargs rm -rf
       args:
