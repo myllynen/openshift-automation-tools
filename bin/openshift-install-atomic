@@ -20,7 +20,7 @@ ansible-playbook $BASE/conf/wait-for-hosts.yml
 ./setup-ssh || exit 6
 ./setup-iptables || exit 7
 ansible-playbook $BASE/conf/prep.yml || exit 8
-#ansible-playbook $BASE/conf/pre-pop.yml
+#ansible-playbook $BASE/conf/speed-up.yml
 time ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml || exit 9
 ansible-playbook $BASE/conf/post.yml
 ansible-playbook $BASE/conf/auth.yml || exit 10

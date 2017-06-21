@@ -35,7 +35,7 @@ if ! virsh snapshot-info --domain ${NODES%% *} --snapshotname ocp-snap > /dev/nu
   ./setup-ssh || exit 6
   ./setup-iptables || exit 7
   ansible-playbook $BASE/conf/prep.yml || exit 8
-  #ansible-playbook $BASE/conf/pre-pop.yml
+  #ansible-playbook $BASE/conf/speed-up.yml
   ansible all -a "reboot" > /dev/null 2>&1
   ansible-playbook $BASE/conf/wait-for-hosts.yml
   sleep 90
