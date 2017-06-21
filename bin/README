@@ -1,6 +1,6 @@
 These scripts are mostly helpful doing test installations on KVM/libvirt VMs.
 
-The base-setup may be helpful in other environments as well.
+The registry setup/sync scripts may be helpful in other environments as well.
 
 Adjust VM parameters in the create scripts as needed.
 
