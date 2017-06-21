@@ -2,40 +2,41 @@
 
 [![License: Apache v2](https://img.shields.io/badge/license-Apache%20v2-brightgreen.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-Tools to automate OpenShift installation and maintenance. These scripts 
-and playbooks allow fully automated connected or disconnected OpenShift 
-installation and updates for those parts not automated by the standard 
-OpenShift playbooks. Can be used to quickly setup a PoC environment or 
-to experiment with OpenShift installation parameters. Local registry use 
-will avoid fetching gigabytes of data from external network. Automation 
+Tools to automate OpenShift installation and maintenance. These scripts
+and playbooks enable fully automated connected or disconnected OpenShift
+installation and updates for those parts not automated by the standard
+OpenShift playbooks. Can be used to quickly setup a PoC environment or
+to experiment with OpenShift installation parameters. Local registry use
+will avoid fetching gigabytes of data from external network. Automation
 for platform level tasks like OS upgrades.
 
 ## Technical Overview
 
-Official OpenShift documentation describes how to manually prepare nodes 
-for installation, how to configure local registry for disconnected 
-installations, and how to upgrade OpenShift cluster nodes' OS packages. 
-However, currently (as of OCP 3.5 / 2017-06) no automated tools for 
-these tasks are provided. Automation for additional tasks like complete 
-uninstallation, setting up cluster wide Cockpit or configuring 
+Official OpenShift documentation describes how to manually prepare nodes
+for installation, how to configure local registry for disconnected
+installations, and how to upgrade OpenShift cluster nodes' OS packages.
+However, currently (as of OCP 3.5 / 2017-06) no automated tools for
+these tasks are provided. Automation for additional tasks like complete
+uninstallation, setting up cluster wide Cockpit or configuring
 passwordless cross-node SSH access are also provided.
 
-The following sections will describe the playbooks and scripts in 
-detail. The provided Ansible inventory files provide a quick starting 
-point with most commonly used parameters included. The playbooks and 
-scripts have been tested both with RHEL and RHEL Atomic.
+The following sections will describe the playbooks and scripts in
+detail. The provided Ansible inventory files provide a quick starting
+point for OpenShift installation with most commonly used parameters
+included. The playbooks and scripts have been tested both with RHEL and
+RHEL Atomic.
 
-This repository contains branches for each tested OCP release, the first 
-being OpenShift Container Platform 3.4. Before running any of the 
-scripts or playbooks it is required to investigate their contents and 
-adjust them for the local environment as needed. Playbooks are provided 
+This repository contains branches for each tested OCP release, the first
+being OpenShift Container Platform 3.4. Before running any of the
+scripts or playbooks it is required to investigate their contents and
+adjust them for the local environment as needed. Playbooks are provided
 in standalone form to make it easier to copy and run them anywhere.
 
 For introduction to OpenShift and official documentation, see
 
 https://docs.openshift.com/container-platform/latest/welcome/index.html
 
-For related supported and more feature-rich alternatives suitable for 
+For related supported and more feature-rich alternatives suitable for
 production environments, please consider
 [Red Hat Satellite](https://www.redhat.com/en/technologies/management/satellite)
 and
@@ -62,9 +63,9 @@ and
     downloading old and unnecessary images. After running the script the
     local registry contents (/etc/docker-distribution and /var/lib/registry)
     can be copied to other systems for example with a USB stick in case of
-    fully disconnected environment. For a fully-featured and supported
+    a fully disconnected environment. For a full-featured and supported
     local registry, see:
-    https://docs.openshift.com/container-platform/latest/install_config/install/stand_alone_registry.html
+    https://docs.openshift.com/container-platform/latest/install_config/install/stand_alone_registry.html.
   * [ansible.cfg](conf/ansible.cfg) - Ansible example configuration
     with some optimizations to slightly reduce installation time and
     provide additional control and diagnostics.
@@ -74,7 +75,7 @@ and
     Ansible example inventory files for OpenShift Container Platform
     installation, compact and full variants.
   * [prep.yml](conf/prep.yml) - a playbook to automate host preparation
-    described in https://docs.openshift.com/container-platform/latest/install_config/install/host_preparation.html.
+    as described in https://docs.openshift.com/container-platform/latest/install_config/install/host_preparation.html.
     Docker storage configuration needs to be adjusted in the [template
     file](conf/docker-storage-setup.j2) for local environment. Supports
     either [Red Hat Subscription-Manager](https://access.redhat.com/solutions/253273)
@@ -90,7 +91,7 @@ and
     to configure [Cockpit](http://cockpit-project.org/) for all nodes
     in the OpenShift cluster with masters running the Cockpit Web UI.
     Note that this setup is unsupported and for PoC environments only.
-    For a supported monitoring solution, use 
+    For a supported monitoring solution, use
     [Red Hat CloudForms](https://www.redhat.com/en/technologies/management/cloudforms).
     Other alternatives for Kubernetes/OpenShift monitoring include
     https://blog.openshift.com/full-cluster-capacity-management-monitoring-openshift/
@@ -111,15 +112,15 @@ and
   * [wipe-nfs.yml](conf/wipe-nfs.yml) and [wipe-docker.yml](conf/wipe-docker.yml) -
     playbooks to wipe out all NFS and Docker data. Use with caution!
 
-There are also several helper scripts under [bin/](bin/) for installing 
-OCP on KVM/libvirt. These scripts will require some customization prior 
-using and thus are not ready to be used out of the box but they may be 
-helpful in some cases. In a properly prepared environment, the 
-[openshift-install](bin/openshift-install) or 
-[openshift-install-atomic](bin/openshift-install-atomic) allow for a 
-one-step installation of the entire OpenShift platform starting from 
-RHEL/Atomic installation on VMs and then installing and finalizing 
-OpenShift cluster. For more serious tools see the earlier mentioned 
+There are also several helper scripts under [bin/](bin/) for installing
+OCP on KVM/libvirt. These scripts will require some customization prior
+using and thus are not ready to be used out of the box but they may be
+helpful in some cases. In a properly prepared environment, the
+[openshift-install](bin/openshift-install) or
+[openshift-install-atomic](bin/openshift-install-atomic) allow for a
+one-step installation of the entire OpenShift platform starting from
+RHEL/Atomic installation on VMs and then installing and finalizing
+OpenShift cluster. For more serious tools see the earlier mentioned
 supported products.
 
 ## License
