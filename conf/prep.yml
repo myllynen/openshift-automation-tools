@@ -31,14 +31,14 @@
       command: hostnamectl set-hostname {{ inventory_hostname }}
       when: inventory_hostname != ansible_fqdn
 
-    # https://bugzilla.redhat.com/show_bug.cgi?id=1414332
-    - name: Determine ifcfg files needing update
-      shell: grep -l DHCP_HOSTNAME /etc/sysconfig/network-scripts/ifcfg-*
+    - name: Determine ifcfg files
+      shell: ls -1 /etc/sysconfig/network-scripts/ifcfg-*
       register: ifcfg_files
       changed_when: false
       failed_when: false
 
-    - name: Update ifcfg files
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1414332
+    - name: Sanitize ifcfg files
       lineinfile:
         state=absent
         dest={{ item }}
@@ -123,6 +123,18 @@
         - wget
         - yum-utils
       when: not is_atomic
+
+    - name: Configure NetworkManager
+      lineinfile:
+        state=absent
+        dest={{ item }}
+        regexp='^NM_CONTROLLED=no'
+      with_items: "{{ ifcfg_files.stdout_lines }}"
+      register: networkmanager_config
+
+    - name: Restart NetworkManager
+      service: name=NetworkManager state=restarted
+      when: networkmanager_config | changed
 
     - name: Enable NetworkManager
       service: name=NetworkManager enabled=yes state=started
