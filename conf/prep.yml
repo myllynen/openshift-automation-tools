@@ -124,7 +124,7 @@
       lineinfile:
         state=absent
         dest={{ item }}
-        regexp='^NM_CONTROLLED=no'
+        regexp='^NM_CONTROLLED=.*'
       with_items: "{{ ifcfg_files.stdout_lines }}"
       register: networkmanager_config
 
