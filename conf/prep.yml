@@ -99,7 +99,7 @@
     - name: Install helpful packages
       package: name={{ item }} state=present
       with_items:
-        - NetworkManager-config-routing-rules
+        - NetworkManager-dispatcher-routing-rules
         - bash-completion
         - bind-utils
         - bzip2
