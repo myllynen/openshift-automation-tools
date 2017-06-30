@@ -15,6 +15,22 @@
       command: atomic-openshift-excluder exclude
       when: not is_atomic
 
+# https://bugzilla.redhat.com/show_bug.cgi?id=1425022
+- name: Finalize OpenShift parameters
+  hosts: masters[0]
+  become: true
+  tasks:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1466664
+    - name: Register Registry Console DC status
+      shell: "OC_EDITOR=cat oc edit dc -n default registry-console | grep 'region: infra'"
+      register: registryconsoledc_config
+      changed_when: false
+      failed_when: false
+
+    - name: Update Registry Console DC
+      command: "oc patch dc -n default registry-console -p \'{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"region\":\"infra\"}}}}}\'"
+      when: '"region: infra" not in registryconsoledc_config.stdout'
+
 - name: Finalize OpenShift configuration
   hosts: masters[0]
   become: true
