@@ -145,7 +145,6 @@
 - hosts: nodes:!masters
   become: true
   tasks:
-    # https://bugzilla.redhat.com/show_bug.cgi?id=1406057
     - name: Pull needed images | metrics
       command: docker pull -a {{ item }}
       with_items:
