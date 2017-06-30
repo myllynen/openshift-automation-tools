@@ -31,7 +31,7 @@
       command: hostnamectl set-hostname {{ inventory_hostname }}
       when: inventory_hostname != ansible_fqdn
 
-    - name: Determine ifcfg files
+    - name: Register ifcfg files
       shell: ls -1 /etc/sysconfig/network-scripts/ifcfg-*
       register: ifcfg_files
       changed_when: false
