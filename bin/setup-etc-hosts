@@ -5,7 +5,9 @@
 for node in $NODES; do
   IP=
   while [ -z "$IP" ]; do
-    IP=$(virsh domifaddr $node | awk '/ipv4/ {print $4}' | cut -d/ -f1)
+# UUID is needed for dominfo
+    DUUID=$(virsh dominfo $node | awk 'FNR == 3 {print $2}')
+    IP=$(virsh domifaddr $DUUID | awk '/ipv4/ {print $4}' | cut -d/ -f1)
     [ -z "$IP" ] && sleep 2
   done
   if [ "$USE_DNS" != "yes" ]; then
