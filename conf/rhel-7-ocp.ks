@@ -27,7 +27,7 @@ poweroff
 %packages --instLangs=en_US
 @Core
 NetworkManager
-#NetworkManager-config-routing-rules
+#NetworkManager-dispatcher-routing-rules
 bash-completion
 bind-utils
 bzip2
@@ -43,7 +43,6 @@ man-pages
 mlocate
 nano
 net-tools
-nfs-utils
 openssh-clients
 psmisc
 qemu-guest-agent
