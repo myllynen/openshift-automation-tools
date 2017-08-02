@@ -27,7 +27,7 @@ poweroff
 %packages --instLangs=en_US
 @Core
 NetworkManager
-NetworkManager-config-routing-rules
+#NetworkManager-config-routing-rules
 bash-completion
 bind-utils
 bzip2
@@ -62,7 +62,7 @@ yum-utils
 -dracut-config-rescue
 -firewalld
 -*firmware*
-+linux-firmware
+linux-firmware
 -iprutils
 -kernel-tools
 -microcode_ctl
