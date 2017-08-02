@@ -110,6 +110,7 @@
         - mlocate
         - nano
         - net-tools
+        - openssh-clients
         - psmisc
         - screen
         - strace
