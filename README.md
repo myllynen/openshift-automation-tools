@@ -120,8 +120,9 @@ helpful in some cases. In a properly prepared environment, the
 [openshift-install-atomic](bin/openshift-install-atomic) allow for a
 one-step installation of the entire OpenShift platform starting from
 RHEL/Atomic installation on VMs and then installing and finalizing
-OpenShift cluster. For more serious tools see the earlier mentioned
-supported products.
+OpenShift cluster. Scripts utilize VM snapshots for faster reinstall
+cycles. For more serious tools see the earlier mentioned supported
+products.
 
 ## License
 
