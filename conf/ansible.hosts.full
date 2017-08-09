@@ -522,6 +522,7 @@ openshift_hosted_metrics_storage_volume_size=10Gi
 # Currently logging deployment is disabled by default, enable it by setting this
 openshift_hosted_logging_deploy=true
 openshift_logging_install_logging=true
+#openshift_logging_master_public_url=https://openshift-ansible.test.example.com:8443
 openshift_logging_kibana_hostname=logging.apps.test.example.com
 openshift_logging_image_prefix=registry.example.com:5000/openshift3/
 openshift_logging_image_version=v3.5
