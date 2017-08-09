@@ -74,6 +74,7 @@
 - name: Install OS updates on each node and reboot
   hosts: nodes
   become: true
+  any_errors_fatal: true
   serial: 1
   tasks:
     - name: Disable scheduling
