@@ -5,3 +5,8 @@ The registry setup/sync scripts may be helpful in other environments as well.
 Adjust VM parameters in the create scripts as needed.
 
 Please refer to conf/ and doc/ for more automation.
+
+ADDITONAL NOTES:
+- The assumed storage pool name is 'images', this might not be the case for default installations, where storage pool is 'default'
+- You should also consider installing httpd 'dnf -y install httpd' and enable/start it, for the httpd mount to be successfull.
+- Take a look at the conf dir, and make sure you have the required qcow/iso images for the relevant installation {openshift-install|openshift-install-atomic}
