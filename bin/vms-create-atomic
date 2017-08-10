@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . $(dirname $0)/../conf/nodes.conf || exit 1
-/bin/cp $ATOMIC_IMAGE $LIBVIRT_POOL/ || exit 2
+/bin/cp $ATOMIC_IMAGE $LIBVIRT_POOL_DIR/ || exit 2
 ATOMIC_IMAGE=$(basename $ATOMIC_IMAGE)
 
 cd $(dirname $0)/../conf/
@@ -10,15 +10,15 @@ for node in $NODES; do
   sed -e 's,instance-id:.*,instance-id: '$node',' < meta-data.tmpl > meta-data
   sed -i -e 's,local-hostname:.*,local-hostname: '$node'.'$DOMAIN',' meta-data
   genisoimage -quiet -J -l -r -volid cidata -input-charset UTF-8 \
-    -output $LIBVIRT_POOL/$node-cidata.iso \
+    -output $LIBVIRT_POOL_DIR/$node-cidata.iso \
     meta-data user-data
-  qemu-img create -q -f qcow2 -o backing_file=$LIBVIRT_POOL/$ATOMIC_IMAGE $LIBVIRT_POOL/$node.qcow2
+  qemu-img create -q -f qcow2 -o backing_file=$LIBVIRT_POOL_DIR/$ATOMIC_IMAGE $LIBVIRT_POOL_DIR/$node.qcow2
   virt-install --connect qemu:///system --name $node --virt-type kvm \
     --arch x86_64 --vcpus 4 --cpu host --ram 8192 --os-type linux \
     --os-variant rhel7.3 \
-    --disk path=$LIBVIRT_POOL/$node.qcow2,bus=virtio,format=qcow2,cache=none,io=native,size=12 \
-    --disk pool=images,format=qcow2,cache=none,io=native,size=24 \
-    --disk path=$LIBVIRT_POOL/$node-cidata.iso,device=cdrom \
+    --disk path=$LIBVIRT_POOL_DIR/$node.qcow2,bus=virtio,format=qcow2,cache=none,io=native,size=12 \
+    --disk pool=$LIBVIRT_POOL_NAME,format=qcow2,cache=none,io=native,size=24 \
+    --disk path=$LIBVIRT_POOL_DIR/$node-cidata.iso,device=cdrom \
     --network network=default --graphics vnc --noreboot \
     --import \
     --noautoconsole
