@@ -37,7 +37,6 @@ ose_images_cont="
 ose_images_opt="
   openshift3/ose-egress-router
   openshift3/ose-keepalived-ipfailover
-  openshift3/ose-recycler
 
   openshift3/image-inspector
 "
@@ -51,7 +50,6 @@ xpaas_images="
 "
 
 jenkins_images="
-  openshift3/jenkins-1-rhel7
   openshift3/jenkins-2-rhel7
   openshift3/jenkins-slave-base-rhel7
   openshift3/jenkins-slave-maven-rhel7
