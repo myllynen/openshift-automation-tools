@@ -10,6 +10,13 @@ nfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
+# Enable unsupported configurations, things that will yield a partially
+# functioning cluster but would not be supported for production use
+openshift_enable_unsupported_configurations=true
+
+# Environment sanity checks
+#openshift_disable_check=disk_availability,docker_image_availability,memory_availability
+
 # SSH user, this user should allow ssh based auth without requiring a
 # password. If using ssh key based auth, then the key should be managed by an
 # ssh agent.
@@ -23,7 +30,7 @@ ansible_ssh_user=root
 debug_level=2
 
 # Specify the deployment type. Valid values are origin and openshift-enterprise.
-deployment_type=openshift-enterprise
+openshift_deployment_type=openshift-enterprise
 
 # Containerized deployment
 containerized=true
@@ -44,6 +51,17 @@ openshift_image_tag=v3.6.173.0.5
 # WARNING: This value will be used for all hosts in RPM based environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
 openshift_pkg_version=-3.6.173.0.5
+
+# This enables all the system containers except for docker:
+#openshift_use_system_containers=False
+#
+# But you can choose separately each component that must be a
+# system container:
+#
+#openshift_use_openvswitch_system_container=False
+#openshift_use_node_system_container=False
+#openshift_use_master_system_container=False
+#openshift_use_etcd_system_container=False
 
 # Install the openshift examples
 openshift_install_examples=false
@@ -72,6 +90,13 @@ openshift_install_examples=false
 # See: https://godoc.org/github.com/openshift/origin/pkg/cmd/server/api#ImagePolicyConfig
 #openshift_master_image_policy_config={"maxImagesBulkImportedPerRepository": 3, "disableScheduledImport": true}
 
+# Configure master API rate limits for external clients
+#openshift_master_external_ratelimit_qps=200
+#openshift_master_external_ratelimit_burst=400
+# Configure master API rate limits for loopback clients
+#openshift_master_loopback_ratelimit_qps=300
+#openshift_master_loopback_ratelimit_burst=600
+
 # Docker Configuration
 # Add additional, insecure, and blocked registries to global docker configuration
 # For enterprise deployment types we ensure that registry.access.redhat.com is
@@ -81,10 +106,32 @@ openshift_docker_additional_registries=registry.example.com:5000
 openshift_docker_blocked_registries=all
 # Disable pushing to dockerhub
 openshift_docker_disable_push_dockerhub=True
+# Use Docker inside a System Container. Note that this is a tech preview and should
+# not be used to upgrade!
+# The following options for docker are ignored:
+# - docker_version
+# - docker_upgrade
+# The following options must not be used
+# - openshift_docker_options
+#openshift_docker_use_system_container=False
+# Install and run cri-o along side docker
+# NOTE: This uses openshift_docker_systemcontainer_image_registry_override as it's override
+# just as container-engine does.
+#openshift_docker_use_crio=False
+# Force the registry to use for the container-engine/crio system container. By default the registry
+# will be built off of the deployment type and ansible_distribution. Only
+# use this option if you are sure you know what you are doing!
+#openshift_docker_systemcontainer_image_registry_override="registry.example.com"
+#openshift_crio_systemcontainer_image_registry_override="registry.example.com"
 # Items added, as is, to end of /etc/sysconfig/docker OPTIONS
 # Default value: "--log-driver=journald"
 openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
 #--max-concurrent-downloads=10 --max-concurrent-uploads=10
+
+# Specify whether to run Docker daemon with SELinux enabled in containers. Default is True.
+# Uncomment below to disable; for example if your kernel does not support the
+# Docker overlay/overlay2 storage drivers with SELinux enabled.
+#openshift_docker_selinux_enabled=False
 
 # Specify exact version of Docker to configure or upgrade to.
 # Downgrades are not supported and will error out. Be careful when upgrading docker from < 1.10 to > 1.10.
@@ -118,13 +165,18 @@ openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
 # openshift_master_upgrade_post_hook=/usr/share/custom/post_master.yml
 
 # Alternate image format string, useful if you've got your own registry mirror
+# Configure this setting just on node or master
+#oreg_url_master=example.com/openshift3/ose-${component}:${version}
+#oreg_url_node=example.com/openshift3/ose-${component}:${version}
+# For setting the configuration globally
 oreg_url=registry.example.com:5000/openshift3/ose-${component}:${version}
 # If oreg_url points to a registry other than registry.access.redhat.com we can
 # modify image streams to point at that registry by setting the following to true
 openshift_examples_modify_imagestreams=true
 
-# Additional yum repos to install
+# OpenShift repository configuration
 #openshift_additional_repos=[{'id': 'ose-devel', 'name': 'ose-devel', 'baseurl': 'http://example.com/puddle/build/AtomicOpenShift/3.1/latest/RH7-RHOSE-3.0/$basearch/os', 'enabled': 1, 'gpgcheck': 0}]
+#openshift_repos_enable_testing=false
 
 # htpasswd auth
 openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
@@ -177,6 +229,13 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 #openshift_master_request_header_ca=<ca text>
 # or
 #openshift_master_request_header_ca_file=<path to local ca file to use>
+
+# CloudForms Management Engine (ManageIQ) App Install
+#
+# Enables installation of MIQ server. Recommended for dedicated
+# clusters only. See roles/openshift_cfme/README.md for instructions
+# and requirements.
+#openshift_cfme_install_app=False
 
 # Cloud Provider Configuration
 #
@@ -274,6 +333,15 @@ osm_default_node_selector='region=primary'
 
 # Override master servingInfo.maxRequestsInFlight
 #openshift_master_max_requests_inflight=500
+
+# Override master and node servingInfo.minTLSVersion and .cipherSuites
+# valid TLS versions are VersionTLS10, VersionTLS11, VersionTLS12
+# example cipher suites override, valid cipher suites are https://golang.org/pkg/crypto/tls/#pkg-constants
+#openshift_master_min_tls_version=VersionTLS12
+#openshift_master_cipher_suites=['TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256', '...']
+#
+#openshift_node_min_tls_version=VersionTLS12
+#openshift_node_cipher_suites=['TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256', '...']
 
 # default storage plugin dependencies to install, by default the ceph and
 # glusterfs plugin dependencies will be installed, if available.
@@ -386,6 +454,9 @@ openshift_hosted_registry_selector='region=infra'
 # based on the number of nodes matching the openshift registry selector.
 openshift_hosted_registry_replicas=1
 #
+# Validity of the auto-generated certificate in days (optional)
+openshift_hosted_registry_cert_expire_days=3650
+#
 # Manage the OpenShift Registry (optional)
 #openshift_hosted_manage_registry=true
 
@@ -427,6 +498,8 @@ openshift_hosted_registry_storage_volume_size=10Gi
 # S3 bucket must already exist.
 #openshift_hosted_registry_storage_kind=object
 #openshift_hosted_registry_storage_provider=s3
+#openshift_hosted_registry_storage_s3_encrypt=false
+#openshift_hosted_registry_storage_s3_kmskeyid=aws_kms_key_id
 #openshift_hosted_registry_storage_s3_accesskey=aws_access_key_id
 #openshift_hosted_registry_storage_s3_secretkey=aws_secret_access_key
 #openshift_hosted_registry_storage_s3_bucket=bucket_name
@@ -500,6 +573,7 @@ openshift_metrics_heapster_limits_memory=1Gi
 #openshift_hosted_metrics_storage_nfs_options='*(rw,root_squash)'
 #openshift_hosted_metrics_storage_volume_name=metrics
 #openshift_hosted_metrics_storage_volume_size=10Gi
+#openshift_hosted_metrics_storage_labels={'storage': 'metrics'}
 #
 # Option B - External NFS Host
 # NFS volume must already exist with path "nfs_directory/_volume_name" on
@@ -512,6 +586,7 @@ openshift_hosted_metrics_storage_nfs_directory=/var/srv/nfs
 openshift_hosted_metrics_storage_nfs_options='*(rw,root_squash)'
 openshift_hosted_metrics_storage_volume_name=metrics
 openshift_hosted_metrics_storage_volume_size=10Gi
+#openshift_hosted_metrics_storage_labels={'storage': 'metrics'}
 #
 # Option C - Dynamic -- If openshift supports dynamic volume provisioning for
 # your cloud platform use this.
@@ -559,6 +634,7 @@ openshift_logging_kibana_proxy_memory_limit=1Gi
 #openshift_hosted_logging_storage_nfs_options='*(rw,root_squash)'
 #openshift_hosted_logging_storage_volume_name=logging
 #openshift_hosted_logging_storage_volume_size=10Gi
+#openshift_hosted_logging_storage_labels={'storage': 'logging'}
 #
 # Option B - External NFS Host
 # NFS volume must already exist with path "nfs_directory/_volume_name" on
@@ -571,6 +647,7 @@ openshift_hosted_logging_storage_nfs_directory=/var/srv/nfs
 openshift_hosted_logging_storage_nfs_options='*(rw,root_squash)'
 openshift_hosted_logging_storage_volume_name=logging
 openshift_hosted_logging_storage_volume_size=10Gi
+#openshift_hosted_logging_storage_labels={'storage': 'logging'}
 #
 # Option C - Dynamic -- If openshift supports dynamic volume provisioning for
 # your cloud platform use this.
@@ -713,6 +790,9 @@ openshift_master_overwrite_named_certificates=true
 # characters long, to select AES-128, AES-192, or AES-256.
 #openshift_master_session_encryption_secrets=['DONT+USE+THIS+SECRET+b4NV+pmZNSO']
 
+# Configure firewalling implementation
+#os_firewall_use_firewalld=True
+
 # configure how often node iptables rules are refreshed
 #openshift_node_iptables_sync_period=5s
 
@@ -730,8 +810,8 @@ openshift_set_hostname=True
 #openshift_dns_ip=172.30.0.1
 
 # Configure node kubelet arguments. pods-per-core is valid in OpenShift Origin 1.3 or OpenShift Container Platform 3.3 and later.
-#openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
-openshift_node_kubelet_args={'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
+#openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['85'], 'image-gc-low-threshold': ['80']}
+openshift_node_kubelet_args={'image-gc-high-threshold': ['85'], 'image-gc-low-threshold': ['80']}
 
 # Configure logrotate scripts
 # See: https://github.com/nickhammond/ansible-logrotate
@@ -758,6 +838,10 @@ openshift_node_kubelet_args={'image-gc-high-threshold': ['90'], 'image-gc-low-th
 # These options configure HTTP_PROXY, HTTPS_PROXY, and NOPROXY environment
 # variables for docker and master services.
 # https://docs.openshift.com/container-platform/latest/install_config/http_proxies.html
+#
+# Hosts in the openshift_no_proxy list will NOT use any globally
+# configured HTTP(S)_PROXYs. openshift_no_proxy accepts domains
+# (.example.com), hosts (example.com), and IP addresses.
 #openshift_http_proxy=http://USER:PASSWORD@IPADDR:PORT
 #openshift_https_proxy=https://USER:PASSWORD@IPADDR:PORT
 #openshift_no_proxy='.hosts.example.com,some-host.com'
@@ -765,7 +849,11 @@ openshift_node_kubelet_args={'image-gc-high-threshold': ['90'], 'image-gc-low-th
 # Most environments don't require a proxy between openshift masters, nodes, and
 # etcd hosts. So automatically add those hostnames to the openshift_no_proxy list.
 # If all of your hosts share a common domain you may wish to disable this and
-# specify that domain above.
+# specify that domain above instead.
+#
+# For example, having hosts with FQDNs: m1.ex.com, n1.ex.com, and
+# n2.ex.com, one would simply add '.ex.com' to the openshift_no_proxy
+# variable (above) and set this value to False
 openshift_generate_no_proxy_hosts=True
 #
 # These options configure the BuildDefaults admission controller which injects
@@ -805,6 +893,10 @@ openshift_generate_no_proxy_hosts=True
 # masterConfig.volumeConfig.dynamicProvisioningEnabled, configurable as of 1.2/3.2, enabled by default
 #openshift_master_dynamic_provisioning_enabled=False
 
+# Enable template service broker by specifying one of more namespaces whose
+# templates will be served by the broker
+#openshift_template_service_broker_namespaces=['openshift']
+
 # Admission plugin config
 #openshift_master_admission_plugin_config={"ProjectRequestLimit":{"configuration":{"apiVersion":"v1","kind":"ProjectRequestLimitConfig","limits":[{"selector":{"admin":"true"}},{"maxProjects":"1"}]}},"PodNodeConstraints":{"configuration":{"apiVersion":"v1","kind":"PodNodeConstraintsConfig"}}}
 
@@ -822,14 +914,67 @@ openshift_clock_enabled=true
 
 # Enable API service auditing, available as of 3.2
 openshift_master_audit_config={"enabled": true}
+#
+# In case you want more advanced setup for the auditlog you can
+# use this line.
+# The directory in "auditFilePath" will be created if it's not
+# exist
+#openshift_master_audit_config={"enabled": true, "auditFilePath": "/var/log/openpaas-oscp-audit/openpaas-oscp-audit.log", "maximumFileRetentionDays": 14, "maximumFileSizeMegabytes": 500, "maximumRetainedFiles": 5}
 
 # Set upgrade restart mode for full system restarts
 openshift_rolling_restart_mode=system
 
+# Validity of the auto-generated OpenShift certificates in days.
+# See also openshift_hosted_registry_cert_expire_days above.
+#
+openshift_ca_cert_expire_days=3650
+openshift_node_cert_expire_days=3650
+openshift_master_cert_expire_days=3650
+
 # Validity of the auto-generated external etcd certificates in days.
 # Controls validity for etcd CA, peer, server and client certificates.
 #
-#etcd_ca_default_days=1825
+etcd_ca_default_days=3650
+#
+# ServiceAccountConfig:LimitSecretRefences rejects pods that reference secrets their service accounts do not reference
+# openshift_master_saconfig_limitsecretreferences=false
+
+# Upgrade Control
+#
+# By default nodes are upgraded in a serial manner one at a time and all failures
+# are fatal, one set of variables for normal nodes, one set of variables for
+# nodes that are part of control plane as the number of hosts may be different
+# in those two groups.
+#openshift_upgrade_nodes_serial=1
+#openshift_upgrade_nodes_max_fail_percentage=0
+#openshift_upgrade_control_plane_nodes_serial=1
+#openshift_upgrade_control_plane_nodes_max_fail_percentage=0
+#
+# You can specify the number of nodes to upgrade at once. We do not currently
+# attempt to verify that you have capacity to drain this many nodes at once
+# so please be careful when specifying these values. You should also verify that
+# the expected number of nodes are all schedulable and ready before starting an
+# upgrade. If it's not possible to drain the requested nodes the upgrade will
+# stall indefinitely until the drain is successful.
+#
+# If you're upgrading more than one node at a time you can specify the maximum
+# percentage of failure within the batch before the upgrade is aborted. Any
+# nodes that do fail are ignored for the rest of the playbook run and you should
+# take care to investigate the failure and return the node to service so that
+# your cluster.
+#
+# The percentage must exceed the value, this would fail on two failures
+# openshift_upgrade_nodes_serial=4 openshift_upgrade_nodes_max_fail_percentage=49
+# where as this would not
+# openshift_upgrade_nodes_serial=4 openshift_upgrade_nodes_max_fail_percentage=50
+#
+# Multiple data migrations take place and if they fail they will fail the upgrade
+# You may wish to disable these or make them non fatal
+#
+# openshift_upgrade_pre_storage_migration_enabled=true
+# openshift_upgrade_pre_storage_migration_fatal==true
+# openshift_upgrade_post_storage_migration_enabled=true
+# openshift_upgrade_post_storage_migration_fatal==false
 
 [nfs]
 nfs01.example.com containerized=false
