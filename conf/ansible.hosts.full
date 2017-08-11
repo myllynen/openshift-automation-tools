@@ -33,17 +33,17 @@ containerized=true
 # use this to lookup the latest exact version of the container images, which is the tag actually used to configure
 # the cluster. For RPM installations we just verify the version detected in your configured repos matches this
 # release.
-openshift_release=v3.5
+openshift_release=v3.6
 
 # Specify an exact container image tag to install or configure.
 # WARNING: This value will be used for all hosts in containerized environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-openshift_image_tag=v3.5.5.31
+openshift_image_tag=v3.6.173.0.5
 
 # Specify an exact rpm version to install or configure.
 # WARNING: This value will be used for all hosts in RPM based environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-openshift_pkg_version=-3.5.5.31
+openshift_pkg_version=-3.6.173.0.5
 
 # Install the openshift examples
 openshift_install_examples=false
@@ -468,7 +468,7 @@ openshift_hosted_metrics_public_url=https://metrics.apps.test.example.com/hawkul
 openshift_metrics_install_metrics=true
 openshift_metrics_hawkular_hostname=metrics.apps.test.example.com
 openshift_metrics_image_prefix=registry.example.com:5000/openshift3/
-openshift_metrics_image_version=v3.5
+openshift_metrics_image_version=v3.6
 #openshift_metrics_cassandra_storage_type=pv
 
 # Metrics selectors (optional)
@@ -525,7 +525,7 @@ openshift_logging_install_logging=true
 #openshift_logging_master_public_url=https://openshift-ansible.test.example.com:8443
 openshift_logging_kibana_hostname=logging.apps.test.example.com
 openshift_logging_image_prefix=registry.example.com:5000/openshift3/
-openshift_logging_image_version=v3.5
+openshift_logging_image_version=v3.6
 
 # Logging selectors (optional)
 openshift_logging_curator_nodeselector={"region":"infra"}

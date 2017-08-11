@@ -16,9 +16,9 @@ ansible_ssh_user=root
 # https://github.com/openshift/openshift-ansible/blob/master/DEPLOYMENT_TYPES.md
 deployment_type=openshift-enterprise
 containerized=true
-openshift_release=v3.5
-openshift_image_tag=v3.5.5.31
-openshift_pkg_version=-3.5.5.31
+openshift_release=v3.6
+openshift_image_tag=v3.6.173.0.5
+openshift_pkg_version=-3.6.173.0.5
 
 # Configure usage of openshift_clock role.
 openshift_clock_enabled=true
@@ -119,7 +119,7 @@ openshift_hosted_metrics_public_url=https://metrics.apps.test.example.com/hawkul
 openshift_metrics_install_metrics=true
 openshift_metrics_hawkular_hostname=metrics.apps.test.example.com
 openshift_metrics_image_prefix=registry.example.com:5000/openshift3/
-openshift_metrics_image_version=v3.5
+openshift_metrics_image_version=v3.6
 #openshift_metrics_cassandra_storage_type=pv
 
 openshift_metrics_cassandra_nodeselector={"region":"infra"}
@@ -141,7 +141,7 @@ openshift_logging_install_logging=true
 #openshift_logging_master_public_url=https://openshift-ansible.test.example.com:8443
 openshift_logging_kibana_hostname=logging.apps.test.example.com
 openshift_logging_image_prefix=registry.example.com:5000/openshift3/
-openshift_logging_image_version=v3.5
+openshift_logging_image_version=v3.6
 
 openshift_logging_curator_nodeselector={"region":"infra"}
 openshift_logging_es_nodeselector={"region":"infra"}
