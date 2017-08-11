@@ -87,6 +87,7 @@ for img in $ose_images $ose_images_cont; do
   [ -n "$avail" ] || continue
   # Get latest images with and without v in the tag / patch level
   tags=""
+  tags="$tags $(printf %s\\n $avail | grep v${OSE_VERS}$)"
   tags="$tags $(printf %s\\n $avail | grep ^v | tail -n 1)"
   tags="$tags $(printf %s\\n $avail | grep -v ^v | tail -n 1)"
   tags="$tags $(printf %s\\n $avail | grep ^v | grep -v -- - | tail -n 1)"
