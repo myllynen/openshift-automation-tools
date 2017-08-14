@@ -8,6 +8,7 @@ REGISTRY=registry.example.com:5000
 USE_SKOPEO=no
 SKOPEO_DEST_VERIFY=false
 
+# Add/remove XXX to variable names to disable/enable syncing of the images
 ose_images="
   openshift3/ose-deployer
   openshift3/ose-docker-builder
@@ -37,7 +38,7 @@ ose_images_cont="
   openshift3/openvswitch
 "
 
-ose_images_opt="
+XXXose_images_opt="
   openshift3/ose-egress-router
   openshift3/ose-keepalived-ipfailover
 
@@ -81,7 +82,7 @@ fi
 [ "$USE_SKOPEO" != "yes" ] && systemctl start docker
 
 # Pull/copy
-for img in $ose_images $ose_images_cont; do
+for img in $ose_images $ose_images_cont $ose_images_opt; do
   avail="$(curl -s https://$UPSTREAM/v1/repositories/$img/tags | grep -Po '"v?'${OSE_VERS/\./\\.}'.*?"' | tr -d '"' | sort -V)"
   # rhel7/etcd has its own versioning
   if [ "$img" = "rhel7/etcd" ]; then
@@ -120,7 +121,7 @@ done
 # Push
 if [ "$USE_SKOPEO" != "yes" ]; then
   images="$(docker images)"
-  for img in $ose_images $ose_images_cont $xpaas_images $jenkins_images; do
+  for img in $ose_images $ose_images_cont $ose_images_opt $xpaas_images $jenkins_images; do
     for tag in $(printf %s\\n "$images" | awk '/'$UPSTREAM\\/${img/\//\\/}' / {print $2}'); do
       [ "$tag" = "<none>" ] && continue
       docker tag $UPSTREAM/$img:$tag $REGISTRY/$img:$tag || exit 3
