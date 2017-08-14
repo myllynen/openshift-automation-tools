@@ -10,15 +10,15 @@ if ! rpm -q docker-distribution > /dev/null 2>&1; then
     relativeurls: true
     secret: changeme
     tls:
-      certificate: /etc/docker-distribution/registry/cert.crt
-      key: /etc/docker-distribution/registry/key.key
-      #clientcas: /etc/docker-distribution/registry/ca.crt
+      certificate: /etc/docker-distribution/registry/cert.cert
+      key: /etc/docker-distribution/registry/cert.key
+      #clientcas: /etc/docker-distribution/registry/ca.cert
 EOF
   pushd /etc/docker-distribution/registry
   openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 3650 \
-    -keyout key.key -out cert.crt -subj "/CN=${REGISTRY/:*/}" || exit 1
+    -keyout cert.key -out cert.cert -subj "/CN=${REGISTRY/:*/}" || exit 1
   mkdir -p /etc/docker/certs.d/$REGISTRY
-  ln -sf /etc/docker-distribution/registry/cert.crt /etc/docker/certs.d/$REGISTRY/cert.crt
+  ln -sf /etc/docker-distribution/registry/cert.cert /etc/docker/certs.d/$REGISTRY/cert.crt
   popd
 fi
 
