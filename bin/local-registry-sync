@@ -4,6 +4,9 @@ OSE_VERS=3.6
 REG_VERS=2
 UPSTREAM=registry.access.redhat.com
 REGISTRY=registry.example.com:5000
+# https://bugzilla.redhat.com/show_bug.cgi?id=1481130
+USE_SKOPEO=no
+SKOPEO_DEST_VERIFY=false
 
 ose_images="
   openshift3/ose-deployer
@@ -57,8 +60,8 @@ jenkins_images="
 "
 
 # Configure Docker if needed
-rpm -q docker > /dev/null 2>&1 || yum install -y docker
-if ! grep -q "add-registry $REGISTRY" /etc/sysconfig/docker; then
+[ "$USE_SKOPEO" != "yes" ] && (rpm -q docker > /dev/null 2>&1 || yum install -y docker)
+if [ "$USE_SKOPEO" != "yes" ] && ! grep -q "add-registry $REGISTRY" /etc/sysconfig/docker; then
   systemctl stop docker
   sed -i -e 's,--log-driver=,--log-level=warn --log-driver=,' /etc/sysconfig/docker
   sed -i -e 's,--log-level=,--max-concurrent-downloads=10 --log-level=,' /etc/sysconfig/docker
@@ -75,13 +78,16 @@ EOF
   fi
   systemctl enable docker
 fi
-systemctl start docker
+[ "$USE_SKOPEO" != "yes" ] && systemctl start docker
 
-# Pull
+# Pull/copy
 for img in $ose_images $ose_images_cont; do
   avail="$(curl -s https://$UPSTREAM/v1/repositories/$img/tags | grep -Po '"v?'${OSE_VERS/\./\\.}'.*?"' | tr -d '"' | sort -V)"
   # rhel7/etcd has its own versioning
-  [ "$img" = "rhel7/etcd" ] && docker pull $UPSTREAM/$img
+  if [ "$img" = "rhel7/etcd" ]; then
+    [ "$USE_SKOPEO" != "yes" ] && docker pull $UPSTREAM/$img
+    [ "$USE_SKOPEO"  = "yes" ] && echo Copying $img... && skopeo copy --dest-tls-verify=$SKOPEO_DEST_VERIFY --dest-cert-dir=/etc/docker-distribution/registry docker://$UPSTREAM/$img docker://$REGISTRY/$img
+  fi
   [ -n "$avail" ] || continue
   # Get latest images with and without v in the tag / patch level
   tags=""
@@ -92,14 +98,26 @@ for img in $ose_images $ose_images_cont; do
   tags="$tags $(printf %s\\n $avail | grep -v ^v | grep -v -- - | tail -n 1)"
   tags="$(echo $tags | tr ' ' '\n' | sort -u)"
   for tag in $tags; do
-    docker pull $UPSTREAM/$img:$tag || exit 1
+    if [ "$USE_SKOPEO" != "yes" ]; then
+      docker pull $UPSTREAM/$img:$tag || exit 1
+    else
+      echo Copying $img:$tag...
+      skopeo copy --dest-tls-verify=$SKOPEO_DEST_VERIFY --dest-cert-dir=/etc/docker-distribution/registry docker://$UPSTREAM/$img:$tag docker://$REGISTRY/$img:$tag || exit 1
+    fi
   done
 done
 
 for img in $xpaas_images $jenkins_images; do
   # Latest only
-  docker pull $UPSTREAM/$img || exit 2
+  if [ "$USE_SKOPEO" != "yes" ]; then
+    docker pull $UPSTREAM/$img || exit 2
+  else
+    echo Copying $img...
+    skopeo copy --dest-tls-verify=$SKOPEO_DEST_VERIFY --dest-cert-dir=/etc/docker-distribution/registry docker://$UPSTREAM/$img docker://$REGISTRY/$img || exit 2
+  fi
 done
+
+[ "$USE_SKOPEO" = "yes" ] && exit 0
 
 # Push
 images="$(docker images)"
