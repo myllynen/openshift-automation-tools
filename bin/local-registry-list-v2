@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Due to https://bugzilla.redhat.com/show_bug.cgi?id=1481131
+
+REGISTRY=registry.example.com:5000
+
+images=$(curl -k -s -X GET https://$REGISTRY/v2/_catalog | cut -d\[ -f2 | tr -d ']}"' | tr ',' '\n' | sort)
+
+printf "%-64s %s\n" REPOSITORY TAG
+for img in $images; do
+  tags=$(curl -k -s -X GET https://$REGISTRY/v2/$img/tags/list | cut -d\[ -f2 | tr -d ']}"' | tr ',' '\n' | sort -V)
+  for tag in $tags; do
+    [ "${tag#*:}" != "$tag" ] && continue
+    printf "%-64s %s\n" $REGISTRY/$img $tag
+  done
+done
