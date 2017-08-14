@@ -117,15 +117,18 @@ for img in $xpaas_images $jenkins_images; do
   fi
 done
 
-[ "$USE_SKOPEO" = "yes" ] && exit 0
-
 # Push
-images="$(docker images)"
-for img in $ose_images $ose_images_cont $xpaas_images $jenkins_images; do
-  for tag in $(printf %s\\n "$images" | awk '/'$UPSTREAM\\/${img/\//\\/}' / {print $2}'); do
-    [ "$tag" = "<none>" ] && continue
-    docker tag $UPSTREAM/$img:$tag $REGISTRY/$img:$tag || exit 3
-    docker push $REGISTRY/$img:$tag || exit 4
-    docker rmi $REGISTRY/$img:$tag || exit 5
+if [ "$USE_SKOPEO" != "yes" ]; then
+  images="$(docker images)"
+  for img in $ose_images $ose_images_cont $xpaas_images $jenkins_images; do
+    for tag in $(printf %s\\n "$images" | awk '/'$UPSTREAM\\/${img/\//\\/}' / {print $2}'); do
+      [ "$tag" = "<none>" ] && continue
+      docker tag $UPSTREAM/$img:$tag $REGISTRY/$img:$tag || exit 3
+      docker push $REGISTRY/$img:$tag || exit 4
+      docker rmi $REGISTRY/$img:$tag || exit 5
+    done
   done
-done
+fi
+
+# Garbage collect
+/usr/bin/registry garbage-collect /etc/docker-distribution/registry/config.yml
