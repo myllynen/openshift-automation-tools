@@ -15,7 +15,7 @@ for platform level tasks like OS upgrades.
 Official OpenShift documentation describes how to manually prepare nodes
 for installation, how to configure local registry for disconnected
 installations, and how to upgrade OpenShift cluster nodes' OS packages.
-However, currently (as of OCP 3.5 / 2017-06) no automated tools for
+However, currently (as of OCP 3.6 / 2017-09) no automated tools for
 these tasks are provided. Automation for additional tasks like complete
 uninstallation, setting up cluster wide Cockpit or configuring
 passwordless cross-node SSH access are also provided.
