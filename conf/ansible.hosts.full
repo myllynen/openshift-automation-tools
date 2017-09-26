@@ -101,8 +101,8 @@ openshift_install_examples=false
 # Add additional, insecure, and blocked registries to global docker configuration
 # For enterprise deployment types we ensure that registry.access.redhat.com is
 # included if you do not include it
-openshift_docker_additional_registries=registry.example.com:5000
-#openshift_docker_insecure_registries=registry.example.com:5000
+openshift_docker_additional_registries=registry.example.com:5000,docker-registry.default.svc
+#openshift_docker_insecure_registries=registry.example.com:5000,docker-registry.default.svc
 openshift_docker_blocked_registries=all
 # Disable pushing to dockerhub
 openshift_docker_disable_push_dockerhub=True

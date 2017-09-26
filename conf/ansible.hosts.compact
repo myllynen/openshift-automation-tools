@@ -34,7 +34,7 @@ osm_use_cockpit=true
 osm_cockpit_plugins=['cockpit-kubernetes', 'cockpit-pcp', 'setroubleshoot-server']
 
 # Docker / Registry Configuration
-openshift_docker_additional_registries=registry.example.com:5000
+openshift_docker_additional_registries=registry.example.com:5000,docker-registry.default.svc
 openshift_docker_blocked_registries=all
 openshift_docker_disable_push_dockerhub=True
 openshift_docker_options="--log-driver=journald --log-level=warn --ipv6=false"
