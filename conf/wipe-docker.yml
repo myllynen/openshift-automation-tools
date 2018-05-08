@@ -28,17 +28,34 @@
         dest=/etc/sysconfig/docker
         regexp='(ADD_REGISTRY|BLOCK_REGISTRY|INSECURE_REGISTRY)=.*'
 
-    - name: Detect Docker storage configuration
-      shell: vgs -o name | grep docker
-      register: docker_vg_name
+    - name: Remove Docker storage configuration
+      file: path=/etc/sysconfig/docker-storage state=absent
+
+    - name: Detect Docker PVs
+      shell: pvs -o pv_name,vg_name | awk '/docker/ {print $1}'
+      register: docker_pv_names
       failed_when: false
       changed_when: false
 
-    - name: Wipe out Docker storage contents
-      command: vgremove -f {{ item }}
-      with_items: "{{ docker_vg_name.stdout_lines }}"
-      when: docker_vg_name.rc == 0
+    - name: Detect Docker disks
+      shell: echo {{ item }} | tr -d '[0-9]'
+      with_items: "{{ docker_pv_names.stdout_lines }}"
+      when: docker_pv_names.stdout != ""
+      register: docker_disk_names
+      failed_when: false
+      changed_when: false
 
-    - name: Wipe out Docker storage configuration
-      file: path=/etc/sysconfig/docker-storage state=absent
-      when: docker_vg_name.rc == 0
+    - name: Remove Docker PVs
+      command: pvremove -ffy {{ item }}
+      with_items: "{{ docker_pv_names.stdout_lines }}"
+      when: docker_pv_names.stdout != ""
+
+    - name: Wipe Docker disk signatures
+      command: wipefs --all --force {{ item }}
+      with_items: "{{ docker_disk_names.results | map(attribute='stdout_lines') | list }}"
+      when: docker_pv_names.stdout != ""
+
+    - name: Reset Docker disks
+      command: dd if=/dev/zero of={{ item }} bs=1M count=4
+      with_items: "{{ docker_disk_names.results | map(attribute='stdout_lines') | list }}"
+      when: docker_pv_names.stdout != ""
