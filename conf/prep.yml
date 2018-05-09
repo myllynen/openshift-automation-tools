@@ -216,7 +216,7 @@
       when: not is_atomic
 
     - name: Detect Docker storage configuration status
-      command: grep -q /dev/mapper/docker /etc/sysconfig/docker-storage
+      command: grep -q storage-driver /etc/sysconfig/docker-storage
       register: docker_storage_test
       changed_when: false
       failed_when: false
