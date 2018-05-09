@@ -55,6 +55,8 @@ ansible-playbook $BASE/conf/post.yml
 ansible-playbook $BASE/conf/auth.yml || exit 10
 #ansible-playbook $BASE/conf/cross-node-ssh.yml
 #ansible-playbook $BASE/conf/cross-node-cockpit.yml
+
+echo
 echo "Done. Enjoy your OpenShift installation at:"
 echo
 echo "https://$(hostname -f):8443/console/"

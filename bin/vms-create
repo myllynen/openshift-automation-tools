@@ -6,7 +6,7 @@
 for node in $NODES; do
   virt-install --connect qemu:///system --name $node --virt-type kvm \
     --arch x86_64 --vcpus 4 --cpu host --ram 8192 --os-type linux \
-    --os-variant rhel7.4 \
+    --os-variant rhel7.5 \
     --disk pool=$LIBVIRT_POOL_NAME,format=qcow2,cache=none,io=native,size=12 \
     --disk pool=$LIBVIRT_POOL_NAME,format=qcow2,cache=none,io=native,size=24 \
     --network network=default --graphics vnc --noreboot \
