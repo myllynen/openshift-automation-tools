@@ -1,0 +1,10 @@
+#!/bin/sh
+
+systemctl stop docker.service docker-distribution.service || exit 1
+/bin/rm -rf /var/lib/docker/* /var/lib/registry/* > /dev/null 2>&1 || :
+rm -f /etc/sysconfig/docker-storage > /dev/null 2>&1 || :
+if vgs | grep -q docker; then
+  lvremove -f docker-vg/docker-pool
+  vgremove -f docker-vg
+fi
+systemctl start docker.service docker-distribution.service || exit 1
